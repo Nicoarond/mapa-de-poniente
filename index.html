@@ -381,7 +381,9 @@ button{font:inherit;color:inherit}
 .letter p{margin:0;font-family:var(--f-map);font-size:17px;line-height:1.5;font-style:italic}
 .letter .seal{position:absolute;right:14px;bottom:-14px;width:30px;height:30px;border-radius:50%;background:var(--seal,#9a2a22);box-shadow:0 2px 4px rgba(0,0,0,.3),inset 0 0 0 3px rgba(0,0,0,.15)}
 .letter .route-ln{font-size:13px;color:var(--ink-2);margin-bottom:8px;font-style:normal;font-family:var(--f-ui)}
-.banner .shield-h{width:34px;height:40px;flex:none}
+.banner .shield-h{width:34px;height:40px;flex:none;cursor:pointer}
+.banner .hsnd{margin-left:auto;align-self:center;flex:none;border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:3px;padding:5px 8px;font:inherit;font-size:13px;cursor:pointer}
+.banner .hsnd:hover{border-color:var(--accent)}
 .snowline{margin-top:10px;font-size:14px;color:var(--ink-2)}
 .chip#soundBtn[aria-pressed="false"] .snd-w{opacity:.25}
 #soundBtn[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
@@ -3003,7 +3005,7 @@ const HOUSES={
 };
 const HOUSE_BY_SEAT=Object.fromEntries(Object.entries(HOUSES).map(([k,h])=>[h.seat,k]));
 const REGION_HOUSE=Object.fromEntries(Object.entries(HOUSES).filter(([,h])=>h.reg).map(([k,h])=>[h.reg,k]));
-const shieldSVG=(key,cls)=>`<svg class="${cls||""}" viewBox="-14 -15 28 32" aria-hidden="true">${HOUSES[key].f}</svg>`;
+const shieldSVG=(key,cls)=>`<svg class="${cls||""}" data-house="${key}" viewBox="-14 -15 28 32" aria-hidden="true">${HOUSES[key].f}</svg>`;
 const gShield=el("g",{class:"shields"}); svg.insertBefore(gShield,gLoc);
 for(const key in HOUSES){ const h=HOUSES[key], pl=BY_ID[h.seat];
   const g=el("g",{class:`shield${h.minor?" minor":""}`,"data-place":h.seat,role:"button",tabindex:"0","aria-label":`Escudo de la Casa ${h.n}`},gShield);
@@ -3658,6 +3660,82 @@ function nearSndBtn(){
 }
 { const _sn=showNear; showNear=function(i){ const r=_sn(i); nearSound(NEAR[i]); nearSndBtn(); return r; }; }
 new MutationObserver(()=>{ if(nsnd.bus && !panel.querySelector('[data-act="near-tl"]')) nearSoundStop(); }).observe(panel,{childList:true});
+
+/* ---------- Sound for house shields: a short fanfare and the call of each sigil ---------- */
+const hsnd={on:true,bus:null};
+try{ hsnd.on=localStorage.getItem("poniente-house-snd")!=="0"; }catch(_){}
+const HOUSE_SND={stark:["m","howl"],lannister:["M","lion"],baratheon:["M","stag"],tully:["M","splash"],arryn:["M","falcon"],greyjoy:["m","kraken"],
+  tyrell:["M","harp"],martell:["M","sun"],targaryen:["m","dragon"],bolton:["m","knife"],frey:["M","bridge"],mormont:["m","bear"],karstark:["m","sun"],
+  umber:["m","chains"],manderly:["M","waves"],tarly:["M","hunt"],dayne:["M","sword"],tarth:["M","waves"],velaryon:["M","waves"],hightower:["M","beacon"],
+  redwyne:["M","wine"],florent:["M","harp"],mallister:["M","falcon"],glover:["m","sword"]};
+function hTone(t,dest,type,f0,f1,dur,vol,cut,q){
+  const ctx=snd.ctx, o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+  o.type=type; o.frequency.setValueAtTime(f0,t); if(f1!==f0) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  lp.type="lowpass"; lp.frequency.value=cut||4000; lp.Q.value=q||.7;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+Math.min(.06,dur/4)); g.gain.setValueAtTime(vol,t+dur*.6); g.gain.exponentialRampToValueAtTime(.0008,t+dur);
+  o.connect(lp); lp.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+.05); return o;
+}
+function hNoise(t,dest,type,freq,dur,vol,q){
+  const ctx=snd.ctx, n=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain();
+  n.buffer=csnd.noise; n.loop=true; f.type=type; f.frequency.value=freq; f.Q.value=q||.8;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+Math.min(.3,dur/3)); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  n.connect(f); f.connect(g); g.connect(dest); n.start(t); n.stop(t+dur+.05); return f;
+}
+function fanfare(t,dest,minor){
+  const root=196, steps=minor?[0,3,7,12]:[0,4,7,12], lens=[.16,.16,.16,.7];
+  let x=t; steps.forEach((st,i)=>{ const f=root*Math.pow(2,st/12);
+    hTone(x,dest,"sawtooth",f,f,lens[i]+.05,.06,1300,1.5); hTone(x,dest,"sawtooth",f*1.003,f*1.003,lens[i]+.05,.04,1300,1.5); x+=lens[i]; });
+}
+function sigil(kind,t,dest){
+  const vib=(o,rate,depth)=>{ const l=snd.ctx.createOscillator(), g=snd.ctx.createGain(); l.frequency.value=rate; g.gain.value=depth; l.connect(g); g.connect(o.frequency); l.start(t); l.stop(t+3); };
+  switch(kind){
+    case "howl": { const o=hTone(t,dest,"sine",330,330,2.6,.12,2000); o.frequency.linearRampToValueAtTime(560,t+.7); o.frequency.linearRampToValueAtTime(520,t+1.8); o.frequency.linearRampToValueAtTime(380,t+2.6); vib(o,5,6);
+      const o2=hTone(t,dest,"sine",660,660,2.6,.03,3000); o2.frequency.linearRampToValueAtTime(1120,t+.7); o2.frequency.linearRampToValueAtTime(1040,t+1.8); o2.frequency.linearRampToValueAtTime(760,t+2.6); break; }
+    case "lion": case "bear": case "dragon": { const [a,b,d,c]={lion:[150,85,1.6,600],bear:[110,70,1.3,450],dragon:[120,55,2.2,800]}[kind];
+      const o=hTone(t,dest,"sawtooth",a,b,d,.14,c,5); vib(o,kind==="bear"?18:11,kind==="dragon"?12:8); hNoise(t,dest,"lowpass",c*.8,d,.1);
+      if(kind==="dragon") for(let i=0;i<3;i++) hNoise(t+d+.1+i*.5,dest,"lowpass",260,.35,.35*(1-i*.25)); break; }
+    case "stag": { const o=hTone(t,dest,"sawtooth",170,95,1.3,.12,700,4); vib(o,7,5); for(let i=0;i<3;i++) hNoise(t+1.5+i*.12,dest,"bandpass",300,.1,.25,1.8); break; }
+    case "splash": hNoise(t,dest,"bandpass",1400,.5,.25,.8); for(let i=0;i<5;i++){ const x=t+.35+i*.13+Math.random()*.05, f=500+Math.random()*500; hTone(x,dest,"sine",f,f*1.8,.09,.06); } break;
+    case "falcon": for(let k=0;k<2;k++){ const o=hTone(t+k*.55,dest,"sawtooth",2400,1500,.5,.05,3600,2); vib(o,28,60); } break;
+    case "kraken": hNoise(t,dest,"lowpass",450,3,.22); hTone(t+.3,dest,"sawtooth",82,78,2.4,.12,380,3); hTone(t+.3,dest,"sawtooth",123,117,2.4,.06,380,3); break;
+    case "harp": [0,4,7,11,12,16,19].forEach((st,i)=>{ const f=392*Math.pow(2,st/12); hTone(t+i*.11,dest,"triangle",f,f,1.4,.07,3000); }); break;
+    case "sun": [523,659,784,1047].forEach((f,i)=>{ const o=hTone(t+i*.08,dest,"sine",f,f,2.2,.04); vib(o,6,3); }); break;
+    case "knife": { const f=hNoise(t,dest,"highpass",2500,.7,.12,3); f.frequency.linearRampToValueAtTime(6000,t+.7); hTone(t,dest,"sine",3100,3300,.8,.02); break; }
+    case "bridge": creak(t); creak(t+1.1); break;
+    case "chains": for(let i=0;i<6;i++){ const x=t+i*.14+Math.random()*.05; [1800,2700,3900].forEach(f=>hTone(x,dest,"square",f+Math.random()*200,f,.12,.012,6000)); } break;
+    case "waves": { const f=hNoise(t,dest,"lowpass",400,3,.3); f.frequency.linearRampToValueAtTime(900,t+1.2); f.frequency.linearRampToValueAtTime(350,t+3); break; }
+    case "hunt": hTone(t,dest,"sawtooth",196,196,.35,.08,900,2); hTone(t+.4,dest,"sawtooth",294,294,1.1,.08,900,2); break;
+    case "sword": { [[1180,.06,2.2],[1870,.04,1.6],[2630,.03,1.2],[3510,.02,.8]].forEach(([f,v,d])=>hTone(t,dest,"sine",f,f,d,v)); hNoise(t,dest,"highpass",3000,.08,.2); break; }
+    case "beacon": { [[262,.12,3],[392,.05,2.4],[524,.03,1.6]].forEach(([f,v,d])=>hTone(t,dest,"sine",f,f,d,v)); break; }
+    case "wine": hTone(t,dest,"sine",2800,2800,1,.05); hTone(t,dest,"sine",4150,4150,.7,.03); hTone(t+.12,dest,"sine",2950,2950,.9,.04); break;
+  }
+}
+function houseSoundStop(){ if(!hsnd.bus) return; const b=hsnd.bus, t=snd.ctx.currentTime; hsnd.bus=null;
+  b.gain.cancelScheduledValues(t); b.gain.setTargetAtTime(0,t,.06); setTimeout(()=>b.disconnect(),500); }
+function houseSound(key){
+  const def=HOUSE_SND[key]; if(!def || !hsnd.on || !cineAudio()) return;
+  houseSoundStop();
+  const ctx=snd.ctx; ctx.resume();
+  const bus=hsnd.bus=ctx.createGain(); bus.connect(csnd.out);
+  const t=ctx.currentTime+.05;
+  fanfare(t,bus,def[0]==="m"); sigil(def[1],t+1.15,bus);
+}
+const houseOf=el=>HOUSE_BY_SEAT[el.dataset.place];
+gShield.addEventListener("click",e=>{ const g=e.target.closest(".shield"); if(g&&!state.measure) houseSound(houseOf(g)); },true);
+lab3.addEventListener("click",e=>{ const b=e.target.closest(".sh3"); if(b&&!state.measure) houseSound(houseOf(b)); },true);
+panel.addEventListener("click",e=>{
+  const hb=e.target.closest(".hsnd");
+  if(hb){ e.stopPropagation(); hsnd.on=!hsnd.on; try{ localStorage.setItem("poniente-house-snd",hsnd.on?"1":"0"); }catch(_){} syncHouseBtn(hb);
+    if(hsnd.on){ const sv=panel.querySelector(".banner [data-house]"); if(sv) houseSound(sv.dataset.house); } else houseSoundStop(); return; }
+  const sv=e.target.closest(".banner [data-house]"); if(sv){ e.stopPropagation(); houseSound(sv.dataset.house); }
+},true);
+function syncHouseBtn(b){ b.textContent=hsnd.on?"🔊":"🔇"; b.setAttribute("aria-pressed",hsnd.on); b.setAttribute("aria-label",hsnd.on?"Silenciar los escudos":"Activar el sonido de los escudos"); b.title=hsnd.on?"Toca el escudo para oírlo":"Sonido de los escudos"; }
+new MutationObserver(()=>{
+  const sv=panel.querySelector(".banner [data-house]");
+  if(!sv){ return; }
+  const bn=sv.closest(".banner"); if(bn.querySelector(".hsnd")) return;
+  const b=document.createElement("button"); b.className="hsnd"; syncHouseBtn(b); bn.appendChild(b);
+}).observe(panel,{childList:true});
 
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
