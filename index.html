@@ -3586,6 +3586,79 @@ function ravenSndBtn(){
     ravenSound(reduce?0:in3?.65:.5, reduce?0:in3?4.2:3.2); ravenSndBtn(); return res; }; }
 new MutationObserver(()=>{ if(rsnd.bus && !panel.querySelector(".letter")) ravenSoundStop(); }).observe(panel,{childList:true});
 
+/* ---------- Sound for near misses: two voices that glide towards each other and never meet, over the sound of the place ---------- */
+const nsnd={on:true,bus:null};
+try{ nsnd.on=localStorage.getItem("poniente-near-snd")!=="0"; }catch(_){}
+const NEAR_AMB={"bran-jon":"storm","arya-catelyn":"drums","arya-sam":"canal","victarion-dany":"sea","brienne-sandor":"shovel","tyrion-dany":"dragon"};
+function noiseLoop(t,t1,dest,setup){
+  const ctx=snd.ctx, n=ctx.createBufferSource(); n.buffer=csnd.noise; n.loop=true; n.playbackRate.value=.5+Math.random()*.1;
+  const out=setup(n); out.connect(dest); n.start(t); n.stop(t1);
+}
+function nearVoices(t,dest){
+  const ctx=snd.ctx;
+  // one voice per character, from opposite sides, gliding to a semitone apart: close, but never the same note
+  [[262,349,-.85,-.18],[523,370,.85,.18]].forEach(([f0,f1,p0,p1],k)=>{
+    const o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), g=ctx.createGain(), pan=ctx.createStereoPanner?ctx.createStereoPanner():null;
+    o.type="triangle"; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+3.2); o.frequency.setValueAtTime(f1,t+4.2); o.frequency.exponentialRampToValueAtTime(k?f1*1.12:f1*.9,t+6);
+    lp.type="lowpass"; lp.frequency.value=1400;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.07,t+.8); g.gain.setValueAtTime(.07,t+4.2); g.gain.linearRampToValueAtTime(0,t+6);
+    o.connect(lp); lp.connect(g);
+    if(pan){ pan.pan.setValueAtTime(p0,t); pan.pan.linearRampToValueAtTime(p1,t+3.2); pan.pan.setValueAtTime(p1,t+4.2); pan.pan.linearRampToValueAtTime(p0,t+6); g.connect(pan); pan.connect(dest); } else g.connect(dest);
+    o.start(t); o.stop(t+6.1);
+  });
+}
+function nearAmb(kind,t,dest){
+  const ctx=snd.ctx, end=t+7;
+  const swell=(g,v)=>{ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+1.2); g.gain.setValueAtTime(v,end-1.5); g.gain.linearRampToValueAtTime(0,end); };
+  if(kind==="storm"||kind==="sea"||kind==="canal"||kind==="wind"||kind==="dragon"||kind==="shovel"||kind==="drums")
+    noiseLoop(t,end,dest,n=>{ const f=ctx.createBiquadFilter(), g=ctx.createGain();
+      f.type=kind==="wind"||kind==="dragon"?"bandpass":"lowpass"; f.frequency.value=kind==="storm"?900:kind==="sea"?500:kind==="canal"?380:kind==="wind"?520:kind==="dragon"?400:300; f.Q.value=kind==="wind"?1.3:.7;
+      if(kind==="sea"||kind==="canal"){ const l=ctx.createOscillator(), lg=ctx.createGain(); l.frequency.value=kind==="sea"?.14:.35; lg.gain.value=.05; l.connect(lg); lg.connect(g.gain); l.start(t); l.stop(end); }
+      swell(g,{storm:.16,sea:.14,canal:.08,wind:.12,dragon:.08,shovel:.04,drums:.04}[kind]); n.connect(f); f.connect(g); return g; });
+  if(kind==="storm"){ // distant thunder
+    [1.6,4.4].forEach((d,i)=>noiseLoop(t+d,t+d+3,dest,n=>{ const f=ctx.createBiquadFilter(), g=ctx.createGain(); f.type="lowpass"; f.frequency.value=160;
+      g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(i?.5:.35,t+d+.08); g.gain.exponentialRampToValueAtTime(.001,t+d+2.8); n.connect(f); f.connect(g); return g; })); }
+  if(kind==="drums"){ // slow war drums from inside the walls
+    for(let x=t+.6;x<end-.8;x+=.9){ [0,.22].forEach((o,i)=>{ const os=ctx.createOscillator(), g=ctx.createGain(), t0=x+o; os.type="sine";
+      os.frequency.setValueAtTime(95,t0); os.frequency.exponentialRampToValueAtTime(48,t0+.25); g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(i?.18:.28,t0+.01); g.gain.exponentialRampToValueAtTime(.001,t0+.45);
+      os.connect(g); g.connect(dest); os.start(t0); os.stop(t0+.5); }); } }
+  if(kind==="canal"){ // a bell across the water
+    [2,4.8].forEach(d=>[[523,.05,2.4],[784,.025,1.6]].forEach(([f,v,dd])=>{ const o=ctx.createOscillator(), g=ctx.createGain(), t0=t+d; o.frequency.value=f;
+      g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(v,t0+.01); g.gain.exponentialRampToValueAtTime(.0005,t0+dd); o.connect(g); g.connect(dest); o.start(t0); o.stop(t0+dd+.05); })); }
+  if(kind==="shovel"){ // a gravedigger at work
+    for(let x=t+.8;x<end-1;x+=1.5+Math.random()*.3) noiseLoop(x,x+.4,dest,n=>{ const f=ctx.createBiquadFilter(), g=ctx.createGain(); f.type="bandpass"; f.frequency.value=1800; f.Q.value=2;
+      g.gain.setValueAtTime(0,x); g.gain.linearRampToValueAtTime(.12,x+.05); g.gain.linearRampToValueAtTime(.08,x+.25); g.gain.linearRampToValueAtTime(0,x+.38); n.connect(f); f.connect(g); return g; }); }
+  if(kind==="dragon"){ // Drogon flying away, and his wings
+    const t0=t+2.2, o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), g=ctx.createGain(); o.type="sawtooth";
+    o.frequency.setValueAtTime(120,t0); o.frequency.linearRampToValueAtTime(170,t0+.4); o.frequency.exponentialRampToValueAtTime(60,t0+1.8);
+    lp.type="lowpass"; lp.frequency.value=700; lp.Q.value=4; g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.12,t0+.2); g.gain.exponentialRampToValueAtTime(.001,t0+2);
+    o.connect(lp); lp.connect(g); g.connect(dest); o.start(t0); o.stop(t0+2.1);
+    for(let i=0;i<4;i++) noiseLoop(t+3.6+i*.55,t+3.6+i*.55+.4,dest,n=>{ const x=t+3.6+i*.55, f=ctx.createBiquadFilter(), g=ctx.createGain(); f.type="lowpass"; f.frequency.value=260;
+      g.gain.setValueAtTime(0,x); g.gain.linearRampToValueAtTime(.4*(1-i*.2),x+.08); g.gain.exponentialRampToValueAtTime(.001,x+.35); n.connect(f); f.connect(g); return g; }); }
+  if(kind==="sea") [1.5,4.2].forEach(d=>creak(t+d));
+}
+function nearSoundStop(){ if(!nsnd.bus) return; const b=nsnd.bus, t=snd.ctx.currentTime; nsnd.bus=null;
+  b.gain.cancelScheduledValues(t); b.gain.setTargetAtTime(0,t,.1); setTimeout(()=>b.disconnect(),700); }
+function nearSound(e){
+  nearSoundStop();
+  if(!nsnd.on || !cineAudio()) return;
+  const ctx=snd.ctx; ctx.resume();
+  const bus=nsnd.bus=ctx.createGain(); bus.connect(csnd.out);
+  const t=ctx.currentTime+.1;
+  nearAmb(NEAR_AMB[e.a+"-"+e.b]||"wind",t,bus);
+  nearVoices(t+.4,bus);
+}
+function nearSndBtn(){
+  const acts=panel.querySelector('.actions [data-act="near-tl"]')?.parentNode; if(!acts || acts.querySelector(".nsnd")) return;
+  const b=document.createElement("button"); b.className="btn nsnd";
+  const sync=()=>{ b.textContent=nsnd.on?"🔊 Sonido":"🔇 Sin sonido"; b.setAttribute("aria-pressed",nsnd.on); b.setAttribute("aria-label",nsnd.on?"Silenciar el encuentro":"Activar el sonido del encuentro"); b.title="Sonido del encuentro"; };
+  sync(); acts.appendChild(b);
+  b.addEventListener("click",ev=>{ ev.stopPropagation(); nsnd.on=!nsnd.on; try{ localStorage.setItem("poniente-near-snd",nsnd.on?"1":"0"); }catch(_){} sync();
+    if(nsnd.on) nearSound(NEAR[x3.lastNear]); else nearSoundStop(); });
+}
+{ const _sn=showNear; showNear=function(i){ const r=_sn(i); nearSound(NEAR[i]); nearSndBtn(); return r; }; }
+new MutationObserver(()=>{ if(nsnd.bus && !panel.querySelector('[data-act="near-tl"]')) nearSoundStop(); }).observe(panel,{childList:true});
+
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
   if((pref==="3d" || (pref!=="2d" && !mq.matches)) && webglOK()) setMode(true); }
