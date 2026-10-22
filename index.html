@@ -1,3 +1,13 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f1ead8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0d0a" media="(prefers-color-scheme: dark)">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
 <title>Mapa de Poniente</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -407,7 +417,6 @@ button{font:inherit;color:inherit}
   .search{order:3;flex-basis:100%}
   .panel{max-height:34vh}
   .mtools .mgroup:first-child{display:none}
-  .map.tl .mtools,.map.tl .goto{display:none}
   .lpop{top:10px;width:200px;max-height:calc(100% - 20px);overflow:auto}
   .lpop .chip{padding:5px 6px;font-size:14px}
   .tabs{width:100%}
@@ -429,6 +438,40 @@ button{font:inherit;color:inherit}
   .presets button{padding:6px 9px;font-size:14px}
   .zoom button{width:34px;height:34px}
   .presets button{padding:6px 8px;font-size:13px}
+}
+.sheet{min-height:0;display:flex;flex-direction:column}
+.sheet>.panel{flex:1}
+.grab{display:none}
+@media (max-width:760px){
+  .app{display:flex;flex-direction:column;gap:8px;padding-block:8px 0}
+  .bar{order:1}
+  .stage{order:2;flex:1;min-height:0;display:block;position:relative;overflow:hidden;margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)))}
+  .map{position:absolute;inset:0;border-radius:0}
+  .map::after{display:none}
+  .tabs{order:3;width:auto;max-width:none;border-radius:0;border-width:1px 0 0;margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));padding-left:max(0px, env(safe-area-inset-left, 0px));padding-right:max(0px, env(safe-area-inset-right, 0px))}
+  .tab{flex-direction:column;gap:3px;padding:8px 4px 9px;font-size:13px;border-radius:0}
+  .tab svg{width:20px;height:20px}
+  .tab+.tab{border-left:0}
+  .tab[aria-selected="true"]{background:transparent;color:var(--accent)}
+  .tab[aria-selected="true"] svg{stroke-width:1.8}
+  .sheet{position:absolute;left:0;right:0;bottom:0;height:86%;z-index:10;background:var(--panel);border-top:1px solid var(--ink-2);border-radius:14px 14px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);transition:transform .32s cubic-bezier(.2,.8,.2,1);will-change:transform}
+  .sheet[data-sheet="peek"]{transform:translateY(calc(100% - 96px))}
+  .sheet[data-sheet="half"]{transform:translateY(46%)}
+  .sheet[data-sheet="full"]{transform:translateY(0)}
+  .sheet.dragging{transition:none}
+  .grab{display:flex;justify-content:center;align-items:center;flex:none;height:26px;border:0;background:none;cursor:grab;touch-action:none;padding:0}
+  .grab i{width:44px;height:5px;border-radius:3px;background:var(--rule)}
+  .sheet>.panel{max-height:none;border:0;border-radius:0;background:none;padding:2px 16px 24px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));overscroll-behavior:contain}
+  .sheet[data-sheet="peek"]>.panel{overflow:hidden}
+  .scalebar{display:none}
+  .goto{left:max(10px, env(safe-area-inset-left, 0px));top:10px}
+  .mtools{right:max(10px, env(safe-area-inset-right, 0px));top:10px}
+  .lpop{right:calc(max(10px, env(safe-area-inset-right, 0px)) + 46px)}
+  .tlbar{left:10px;right:10px;bottom:106px}
+  .cine{bottom:106px}
+  .hint{bottom:106px}
+  .search input,.spoil select,.goto select{font-size:16px}
+  .loc .hit{r:16}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -531,7 +574,7 @@ button{font:inherit;color:inherit}
       <div class="map3d" id="map3d" hidden><div class="labels3d" id="labels3d"></div></div>
       <div class="ctl loading3d" id="loading3d" hidden>Levantando las montañas…</div>
     </div>
-    <aside class="panel" id="panel" aria-live="polite"></aside>
+    <aside class="sheet" id="sheet" data-sheet="half"><button class="grab" id="grab" aria-label="Mostrar u ocultar la información" aria-expanded="true"><i></i></button><div class="panel" id="panel" aria-live="polite"></div></aside>
   </main>
 </div>
 
@@ -3113,9 +3156,38 @@ const syncView=()=>{ const on=btn3d.getAttribute("aria-pressed")==="true"; viewB
 new MutationObserver(syncView).observe(btn3d,{attributes:true,attributeFilter:["aria-pressed"]}); syncView();
 viewBtn.onclick=()=>{ (btn3d.getAttribute("aria-pressed")==="true"?btn2d:btn3d).click(); };
 
+/* ---------- Phones: bottom sheet for the panel ---------- */
+const sheet=document.getElementById("sheet"), grab=document.getElementById("grab"), mq=matchMedia("(max-width:760px)");
+const SHEETS=["peek","half","full"];
+function sheetTo(st){ sheet.dataset.sheet=st; grab.setAttribute("aria-expanded",st!=="peek"); sheet.style.transform=""; if(st!=="peek") panel.scrollTop=panel.scrollTop; }
+const onPhone=()=>mq.matches;
+{ let y0=0, t0=0, startY=0, moved=false, H=0;
+  const cur=()=>{ const m=getComputedStyle(sheet).transform; return m&&m!=="none"?new DOMMatrix(m).m42:0; };
+  grab.addEventListener("pointerdown",e=>{ if(!onPhone()) return; grab.setPointerCapture(e.pointerId); y0=e.clientY; t0=cur(); H=sheet.offsetHeight; moved=false; sheet.classList.add("dragging"); });
+  grab.addEventListener("pointermove",e=>{ if(!sheet.classList.contains("dragging")) return; const dy=e.clientY-y0; if(Math.abs(dy)>4) moved=true; sheet.style.transform=`translateY(${Math.max(0,Math.min(H-96,t0+dy))}px)`; });
+  const end=e=>{ if(!sheet.classList.contains("dragging")) return; sheet.classList.remove("dragging");
+    if(!moved){ const i=SHEETS.indexOf(sheet.dataset.sheet); sheetTo(SHEETS[(i+1)%3]); return; }
+    const y=cur(), stops={full:0,half:H*.46,peek:H-96}; let best="half",bd=1e9;
+    for(const k in stops){ const d=Math.abs(stops[k]-y); if(d<bd){bd=d;best=k;} }
+    const v=e.clientY-y0; if(Math.abs(v)>60) best = v>0 ? (sheet.dataset.sheet==="full"?"half":"peek") : (sheet.dataset.sheet==="peek"?"half":"full");
+    sheetTo(best); };
+  grab.addEventListener("pointerup",end); grab.addEventListener("pointercancel",end);
+}
+// open the sheet when there is something to read, keep it low while the timeline or a cinematic journey plays
+const sheetAfter=(state,fn)=>function(...a){ const r=fn.apply(this,a); if(onPhone() && sheet.dataset.sheet==="peek") sheetTo(state); return r; };
+renderPlace=sheetAfter("half",renderPlace); renderRegion=sheetAfter("half",renderRegion); renderRoute=sheetAfter("half",renderRoute);
+renderRoutes=sheetAfter("half",renderRoutes); renderStories=sheetAfter("half",renderStories); renderNear=sheetAfter("half",renderNear);
+showNear=sheetAfter("half",showNear); renderRavens=sheetAfter("half",renderRavens); flyRaven=sheetAfter("half",flyRaven);
+{ const _t=setTL; setTL=function(on){ const r=_t(on); if(on&&onPhone()) sheetTo("peek"); return r; }; }
+{ const _c=startCine; startCine=async function(id){ if(onPhone()) sheetTo("peek"); return _c(id); }; }
+mapEl.addEventListener("pointerdown",()=>{ if(onPhone() && sheet.dataset.sheet==="full") sheetTo("half"); });
+panel.addEventListener("click",e=>{ const b=e.target.closest("[data-act='cine']"); if(b&&onPhone()) sheetTo("peek"); },true);
+
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
-  if(pref!=="2d" && webglOK()) setMode(true); }
+  if((pref==="3d" || (pref!=="2d" && !mq.matches)) && webglOK()) setMode(true); }
 })();
 </script>
 
+</body>
+</html>
