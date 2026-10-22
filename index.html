@@ -271,6 +271,10 @@ button{font:inherit;color:inherit}
 .labels3d.zw .loc3 span{display:none}
 .labels3d.zw .loc3.w1 span,.labels3d.zw .loc3.sel span{display:block}
 .labels3d.hide-city .t-city,.labels3d.hide-castle .t-castle,.labels3d.hide-town .t-town,.labels3d.hide-ruin .t-ruin{display:none}
+.raven3{position:absolute;left:0;top:0;width:0;height:0;z-index:5;pointer-events:none;will-change:transform}
+.raven3 svg{position:absolute;left:-32px;top:-19px;width:64px;height:38px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
+.raven3 path{fill:#151515;stroke:#f3ead6;stroke-width:1.1px;stroke-linejoin:round}
+.raven3.white path{fill:#fbfbf8;stroke:#1d1d1d}
 .rs3 .in{width:20px;height:20px;border-radius:50%;background:var(--rc);color:#fff;border:2px solid var(--land);display:grid;place-items:center;font:700 11px var(--f-ui);transform:translate(-50%,-150%)}
 .loading3d{left:50%;top:50%;transform:translate(-50%,-50%);padding:8px 14px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;font-size:14px;color:var(--ink-2)}
 .chip.mode{border-radius:3px;padding:5px 12px;font-family:var(--f-display);font-size:15px}
@@ -3182,6 +3186,55 @@ showNear=sheetAfter("half",showNear); renderRavens=sheetAfter("half",renderRaven
 { const _c=startCine; startCine=async function(id){ if(onPhone()) sheetTo("peek"); return _c(id); }; }
 mapEl.addEventListener("pointerdown",()=>{ if(onPhone() && sheet.dataset.sheet==="full") sheetTo("half"); });
 panel.addEventListener("click",e=>{ const b=e.target.closest("[data-act='cine']"); if(b&&onPhone()) sheetTo("peek"); },true);
+
+/* ---------- Ravens in 3D: a flapping bird on an arc above the relief ---------- */
+const r3={group:null,raf:0,last:-1};
+function clearRaven3D(){
+  cancelAnimationFrame(r3.raf);
+  if(r3.group && view3d.ready){ scene.remove(r3.group); r3.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); dirty=true; }
+  r3.group=null; if(r3.el){ r3.el.remove(); r3.el=null; }
+}
+function raven3D(r){
+  clearRaven3D(); if(!view3d.on||!view3d.ready) return;
+  const g=new THREE.Group(); scene.add(g); r3.group=g;
+  const L=Math.hypot(r.b.x-r.a.x,r.b.y-r.a.y), lift=Math.max(90,L*.22);
+  const ground=(x,y)=>Math.max(0,heightAt(x,y));
+  const at=f=>{ const p=ravenAt(r,f); return new THREE.Vector3(p.x-WX/2, ground(p.x,p.y)+12+Math.sin(Math.PI*f)*lift, p.y-HY/2); };
+  // dashed trail
+  const pts=[]; for(let i=0;i<=80;i++) pts.push(at(i/80));
+  const trail=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({color:new THREE.Color(tok("--ink-2")).convertSRGBToLinear(),dashSize:9,gapSize:7,transparent:true,opacity:.85}));
+  trail.computeLineDistances(); g.add(trail);
+  // the bird: drawn in the label layer so place names never cover it
+  const el3=document.createElement("div"); el3.className=`raven3${r.white?" white":""}`;
+  el3.innerHTML=`<svg viewBox="-15 -9 30 18" aria-hidden="true"><path d="${BIRD}"/></svg>`; lab3.appendChild(el3); r3.el=el3;
+  // shadow on the ground
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(Math.max(10,L*.02),20),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.28,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2; g.add(shadow);
+  const pv=new THREE.Vector3(), qv=new THREE.Vector3();
+  const t0=performance.now()+(reduce?0:650), dur=reduce?1:4200;
+  const step=now=>{
+    const f=Math.max(0,Math.min(1,(now-t0)/dur)), p=at(f), q=at(Math.min(1,f+.01)), b=at(Math.max(0,f-.01));
+    const W2=mapEl.clientWidth, H2=mapEl.clientHeight;
+    pv.copy(p).project(camera); const sx=(pv.x+1)/2*W2, sy=(1-pv.y)/2*H2;
+    qv.copy(f<1?q:p).project(camera); const bv=b.clone().project(camera);
+    const ang=Math.atan2(-(qv.y-bv.y)*H2,(qv.x-bv.x)*W2)*180/Math.PI+90;
+    const flap=f<1?.55+.45*Math.abs(Math.sin(now/90)):1;
+    el3.style.transform=`translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px) rotate(${ang.toFixed(1)}deg) scale(1,${flap.toFixed(2)})`;
+    const gp=ravenAt(r,f); shadow.position.set(gp.x-WX/2, ground(gp.x,gp.y)+1.5, gp.y-HY/2);
+    shadow.material.opacity=.28*(1-Math.sin(Math.PI*f)*.6);
+    dirty=true; if(f<1) r3.raf=requestAnimationFrame(step);
+  };
+  r3.raf=requestAnimationFrame(step);
+}
+// hook into the existing flight: in 3D, swap the 2D bird for the 3D one
+{ const _fly=flyRaven; flyRaven=function(i){ const res=_fly(i); r3.last=i; if(view3d.on&&view3d.ready){ cancelAnimationFrame(ravenAnim); gRaven.innerHTML=""; raven3D(RAVENS[i]); } return res; }; }
+// clear the bird when the letter leaves the panel; replay it if the view switches while a letter is open
+new MutationObserver(()=>{ if(r3.group && !panel.querySelector(".letter")) clearRaven3D(); }).observe(panel,{childList:true});
+new MutationObserver(()=>{
+  const on3d=btn3d.getAttribute("aria-pressed")==="true", letter=panel.querySelector(".letter");
+  if(!on3d){ clearRaven3D(); if(letter&&r3.last>=0) setTimeout(()=>flyRaven(r3.last),60); return; }
+  if(letter&&r3.last>=0){ const wait=()=>{ if(view3d.on&&view3d.ready) flyRaven(r3.last); else setTimeout(wait,150); }; setTimeout(wait,150); }
+}).observe(btn3d,{attributes:true,attributeFilter:["aria-pressed"]});
 
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
