@@ -3531,6 +3531,61 @@ tlSndBtn.onclick=()=>{
   syncTlBtn(); if(tsnd.on) tlSoundStart(); else tlSoundStop();
 };
 
+/* ---------- Sound for raven flights: take-off, wingbeats and wind on the way, a caw and the letter on arrival ---------- */
+const rsnd={on:true,bus:null};
+try{ rsnd.on=localStorage.getItem("poniente-raven-snd")!=="0"; }catch(_){}
+function flap(t,vol,dest){
+  const ctx=snd.ctx, n=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), g=ctx.createGain();
+  n.buffer=csnd.noise; bp.type="bandpass"; bp.frequency.value=650+Math.random()*350; bp.Q.value=.9;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.04); g.gain.exponentialRampToValueAtTime(.001,t+.15);
+  n.connect(bp); bp.connect(g); g.connect(dest); n.start(t); n.stop(t+.17);
+}
+function caw(t,dest,f0){
+  const ctx=snd.ctx;
+  for(let k=0;k<2;k++){ const t0=t+k*.3, o=ctx.createOscillator(), bp=ctx.createBiquadFilter(), g=ctx.createGain();
+    o.type="sawtooth"; o.frequency.setValueAtTime(f0,t0); o.frequency.exponentialRampToValueAtTime(f0*.68,t0+.22);
+    bp.type="bandpass"; bp.frequency.value=1250; bp.Q.value=3;
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.1,t0+.03); g.gain.exponentialRampToValueAtTime(.001,t0+.24);
+    o.connect(bp); bp.connect(g); g.connect(dest); o.start(t0); o.stop(t0+.26); }
+}
+function ravenSoundStop(){ if(!rsnd.bus) return; const b=rsnd.bus, t=snd.ctx.currentTime; rsnd.bus=null;
+  b.gain.cancelScheduledValues(t); b.gain.setTargetAtTime(0,t,.08); setTimeout(()=>b.disconnect(),600); }
+function ravenSound(delay,dur){
+  ravenSoundStop();
+  if(!rsnd.on || !cineAudio()) return;
+  const ctx=snd.ctx; ctx.resume();
+  const bus=rsnd.bus=ctx.createGain(); bus.gain.value=1; bus.connect(csnd.out);
+  const t=ctx.currentTime+.05, go=t+Math.max(0,delay-.25), land=t+delay+dur;
+  // take-off: a burst of wingbeats and a caw
+  for(let i=0;i<5;i++) flap(go+i*.14,.2*(1-i*.1),bus);
+  caw(go+.1,bus,600);
+  // on the way: wind past the feathers, swelling at the top of the flight, and slower wingbeats
+  if(dur>.5){
+    const n=ctx.createBufferSource(), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+    n.buffer=csnd.noise; n.loop=true; lp.type="lowpass"; lp.frequency.setValueAtTime(500,t); lp.frequency.linearRampToValueAtTime(1100,t+delay+dur/2); lp.frequency.linearRampToValueAtTime(500,land);
+    g.gain.setValueAtTime(0,t+delay); g.gain.linearRampToValueAtTime(.12,t+delay+dur/2); g.gain.linearRampToValueAtTime(0,land+.2);
+    n.connect(lp); lp.connect(g); g.connect(bus); n.start(t+delay); n.stop(land+.3);
+    for(let x=t+delay+.5;x<land-.3;x+=.5+Math.random()*.25){ flap(x,.09,bus); flap(x+.13,.07,bus); }
+  }
+  // arrival: a flutter, a caw and the letter being unrolled
+  for(let i=0;i<4;i++) flap(land+i*.1,.16,bus);
+  caw(land+.35,bus,520);
+  for(let i=0;i<3;i++){ const t0=land+1.1+i*.12, n=ctx.createBufferSource(), hp=ctx.createBiquadFilter(), g=ctx.createGain();
+    n.buffer=csnd.noise; hp.type="highpass"; hp.frequency.value=2500;
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.06,t0+.02); g.gain.exponentialRampToValueAtTime(.001,t0+.1);
+    n.connect(hp); hp.connect(g); g.connect(bus); n.start(t0); n.stop(t0+.12); }
+}
+function ravenSndBtn(){
+  const acts=panel.querySelector(".letter ~ .actions"); if(!acts || acts.querySelector(".rsnd")) return;
+  const b=document.createElement("button"); b.className="btn rsnd";
+  const sync=()=>{ b.textContent=rsnd.on?"🔊 Sonido":"🔇 Sin sonido"; b.setAttribute("aria-pressed",rsnd.on); b.setAttribute("aria-label",rsnd.on?"Silenciar el cuervo":"Activar el sonido del cuervo"); b.title="Sonido del cuervo"; };
+  sync(); acts.appendChild(b);
+  b.addEventListener("click",e=>{ e.stopPropagation(); rsnd.on=!rsnd.on; try{ localStorage.setItem("poniente-raven-snd",rsnd.on?"1":"0"); }catch(_){} sync(); if(!rsnd.on) ravenSoundStop(); });
+}
+{ const _fly=flyRaven; flyRaven=function(i){ const res=_fly(i); const in3=view3d.on&&view3d.ready;
+    ravenSound(reduce?0:in3?.65:.5, reduce?0:in3?4.2:3.2); ravenSndBtn(); return res; }; }
+new MutationObserver(()=>{ if(rsnd.bus && !panel.querySelector(".letter")) ravenSoundStop(); }).observe(panel,{childList:true});
+
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
   if((pref==="3d" || (pref!=="2d" && !mq.matches)) && webglOK()) setMode(true); }
