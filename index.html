@@ -3812,6 +3812,7 @@ document.addEventListener("click",e=>{
   if(!sfx.on || !e.isTrusted) return;
   if(dragged && e.target instanceof Element && mapEl.contains(e.target)) return;
   if(state.measure && e.target instanceof Element && mapEl.contains(e.target) && !e.target.closest(".ctl")){
+    if(mapEl.classList.contains("is3d")) return;
     const before=state.m.length; setTimeout(()=>{ const a=state.m.length; if(a!==before || a===1) fxPlay(a>=2?"chime":"tick"); },0); return; }
   const n=fxFor(e); if(n) fxPlay(n);
 },true);
@@ -3819,6 +3820,15 @@ q.addEventListener("keydown",e=>{ if(e.key==="Enter" && sfx.on && !res.hidden &&
 res.addEventListener("mousedown",e=>{ if(sfx.on && e.target.closest("li[data-i]")) fxPlay("fly"); },true);
 spoilSel.addEventListener("change",()=>{ if(sfx.on) fxPlay("book"); });
 gotoSel.addEventListener("change",()=>{ if(sfx.on && gotoSel.value) fxPlay("fly"); },true);
+// 3D: the terrain is clicked through pointer events, so listen to those and to what they open
+{ const _ma=measureAdd; measureAdd=function(pt){ const r=_ma(pt); if(sfx.on) fxPlay(state.m.length>=2?"chime":"tick"); return r; }; }
+{ const _rr=renderRegion; renderRegion=function(...a){ sfx.regionAt=performance.now(); return _rr.apply(this,a); }; }
+{ let down3=null;
+  document.addEventListener("pointerdown",e=>{ down3=e.target instanceof HTMLCanvasElement && e.target.closest("#map3d") ? [e.clientX,e.clientY] : null; },true);
+  document.addEventListener("pointerup",e=>{
+    if(!down3 || !sfx.on || e.button!==0 || state.measure || Math.hypot(e.clientX-down3[0],e.clientY-down3[1])>5) return;
+    const t0=performance.now(); setTimeout(()=>{ if((sfx.regionAt||0)>=t0) fxPlay("drum"); },0);
+  },true); }
 fxChip.addEventListener("click",()=>{ sfx.on=!sfx.on; fxChip.setAttribute("aria-pressed",sfx.on); try{ localStorage.setItem("poniente-fx-snd",sfx.on?"1":"0"); }catch(_){} if(sfx.on) fxPlay("click"); });
 
 renderIntro();
