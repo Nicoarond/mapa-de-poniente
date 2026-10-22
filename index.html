@@ -334,7 +334,80 @@ button{font:inherit;color:inherit}
 .snowline{margin-top:10px;font-size:14px;color:var(--ink-2)}
 .chip#soundBtn[aria-pressed="false"] .snd-w{opacity:.25}
 #soundBtn[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.app{grid-template-rows:auto auto minmax(0,1fr)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.bar{align-items:center}
+.spoil{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:14px;color:var(--ink-2);white-space:nowrap}
+.spoil svg{width:16px;height:16px;fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-linejoin:round}
+.spoil select{appearance:none;-webkit-appearance:none;font:inherit;font-size:14px;color:var(--ink);background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236a5f4e' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 9px center/10px 6px;border:1px solid var(--rule);border-radius:3px;padding:7px 28px 7px 10px;cursor:pointer}
+.search{flex:0 1 340px}
+.tabs{display:flex;gap:0;border:1px solid var(--ink-2);border-radius:4px;overflow:hidden;width:max-content;max-width:100%;background:var(--panel)}
+.tab{display:flex;align-items:center;gap:8px;border:0;background:transparent;padding:9px 18px;cursor:pointer;font-family:var(--f-display);font-size:17px;color:var(--ink-2);white-space:nowrap}
+.tab+.tab{border-left:1px solid var(--rule)}
+.tab svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tab svg .fill{fill:currentColor;stroke:none}
+.tab:hover{background:var(--accent-soft);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--panel)}
+.tab .sm{display:none}
+.goto{left:14px;top:14px}
+.goto select{appearance:none;-webkit-appearance:none;font-family:var(--f-display);font-size:16px;color:var(--ink);background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236a5f4e' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 10px center/10px 6px;border:1px solid var(--ink-2);border-radius:3px;padding:7px 30px 7px 12px;cursor:pointer}
+.mtools{right:14px;top:14px;display:flex;flex-direction:column;gap:8px}
+.mgroup{display:flex;flex-direction:column;border:1px solid var(--ink-2);border-radius:3px;background:var(--panel)}
+.mbtn{position:relative;width:38px;height:38px;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;font-size:20px;line-height:1;color:var(--ink)}
+.mbtn+.mbtn{border-top:1px solid var(--rule)}
+.mbtn.txt{font-family:var(--f-display);font-size:15px}
+.mbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.mbtn svg .fill{fill:currentColor;stroke:none}
+.mbtn:hover{background:var(--accent-soft)}
+.mbtn[aria-pressed="true"],.mbtn[aria-expanded="true"]{background:var(--ink);color:var(--panel)}
+.mbtn.measure[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+#soundBtn[aria-pressed="false"] .snd-w{opacity:.25}
+@media (hover:hover){.mbtn[data-tip]:hover::after{content:attr(data-tip);position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);background:var(--ink);color:var(--panel);font:14px var(--f-ui);padding:5px 9px;border-radius:3px;white-space:nowrap;pointer-events:none}}
+.lpop{right:62px;top:14px;width:230px;max-height:calc(100% - 28px);overflow:auto;display:flex;flex-direction:column;padding:8px;background:var(--panel);border:1px solid var(--ink-2);border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.lpop[hidden]{display:none}
+.lp-h{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:6px 6px 4px}
+.lp-h~.lp-h{margin-top:10px}
+.lpop .chip{border:0;border-radius:3px;justify-content:flex-start;padding:7px 8px;font-size:15px;color:var(--ink);background:none}
+.lpop .chip::before{content:"";width:16px;height:16px;border:1.5px solid var(--ink-2);border-radius:3px;flex:none;box-sizing:border-box}
+.lpop .chip[aria-pressed="true"]::before{background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.5-5' fill='none' stroke='white' stroke-width='1.8'/%3E%3C/svg%3E") center/12px no-repeat;border-color:var(--ink)}
+.lpop .chip:hover{background:var(--accent-soft)}
+.lpop .chip[aria-pressed="false"]{color:var(--ink-2)}
+.hint3d{display:none;left:14px;bottom:14px;padding:6px 10px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;font-size:13px;color:var(--ink-2);pointer-events:none}
+.map.is3d .hint3d{display:block}
+.map.cinema .hint3d,.map.tl .hint3d{display:none}
+.map.cinema .goto,.map.cinema .mtools{display:none}
+.start{display:grid;gap:10px;margin-top:16px}
+.start button{display:grid;grid-template-columns:38px 1fr;gap:2px 12px;align-items:center;text-align:left;padding:12px 14px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);cursor:pointer}
+.start button:hover{border-color:var(--ink-2);background:var(--accent-soft)}
+.start svg{grid-row:span 2;width:38px;height:38px;padding:8px;border-radius:50%;background:var(--ink);fill:none;stroke:var(--panel);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.start svg .fill{fill:var(--panel);stroke:none}
+.start b{font-family:var(--f-display);font-weight:400;font-size:19px;line-height:1.1}
+.start span{font-size:14px;color:var(--ink-2)}
+.help{margin-top:16px;border-top:1px solid var(--rule);padding-top:10px}
+.help summary{cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.help ul{margin:10px 0 0;padding-left:18px;font-size:14px;display:grid;gap:5px}
+.help .legend{margin-top:10px}
 @media (max-width:760px){
+  .bar{gap:8px 12px}
+  .brand{flex:1;min-width:0}
+  .brand h1{font-size:21px;white-space:nowrap}
+  .panel{max-height:32vh}
+  .spoil{order:2;margin-left:auto}
+  .spoil>span{display:none}
+  .spoil select{padding:6px 26px 6px 8px;max-width:170px}
+  .search{order:3;flex-basis:100%}
+  .panel{max-height:34vh}
+  .mtools .mgroup:first-child{display:none}
+  .map.tl .mtools,.map.tl .goto{display:none}
+  .lpop{top:10px;width:200px;max-height:calc(100% - 20px);overflow:auto}
+  .lpop .chip{padding:5px 6px;font-size:14px}
+  .tabs{width:100%}
+  .tab{flex:1;justify-content:center;padding:9px 6px;font-size:15px;gap:6px}
+  .tab .lg{display:none}.tab .sm{display:inline}
+  .mbtn{width:36px;height:36px}
+  .goto select{font-size:14px;padding:6px 26px 6px 10px}
+  .lpop{right:58px}
+  .hint3d{display:none!important}
   .cine-h{font-size:19px}.cine-t{font-size:14px}.cine-cap{padding:10px 12px}
   .tlbar{left:10px;right:56px;bottom:10px;padding:6px 10px 4px;gap:8px}
   .tlticks span:not(:first-child):not(:nth-child(4)){display:none}
@@ -346,7 +419,6 @@ button{font:inherit;color:inherit}
   .panel h2{font-size:24px}
   .presets button{padding:6px 9px;font-size:14px}
   .zoom button{width:34px;height:34px}
-  .zoom{top:auto;bottom:14px}
   .presets button{padding:6px 8px;font-size:13px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -358,6 +430,14 @@ button{font:inherit;color:inherit}
       <h1>Mapa de Poniente</h1>
       <p>Los Siete Reinos y las tierras de Essos</p>
     </div>
+    <label class="spoil" for="spoil" title="Oculta lo que pasa en los libros que aún no has leído">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4c-1.6-1.1-3.7-1.5-6-1.3v9.8c2.3-.2 4.4.2 6 1.3 1.6-1.1 3.7-1.5 6-1.3V2.7C11.7 2.5 9.6 2.9 8 4zM8 4v9.8"/></svg>
+      <span>He leído hasta</span>
+      <select id="spoil" aria-label="Hasta qué libro has leído">
+        <option value="1">Juego de tronos</option><option value="2">Choque de reyes</option><option value="3">Tormenta de espadas</option>
+        <option value="4">Festín de cuervos</option><option value="5">Danza de dragones</option>
+      </select>
+    </label>
     <div class="search">
       <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
       <input id="q" type="search" placeholder="Buscar: Invernalia, Braavos, Arya…" autocomplete="off" aria-label="Buscar un lugar" aria-controls="results" aria-autocomplete="list">
@@ -365,53 +445,60 @@ button{font:inherit;color:inherit}
     </div>
   </header>
 
-  <div class="tools" role="toolbar" aria-label="Filtros y capas">
-    <label class="lbl" for="spoil">Leído hasta</label>
-    <select id="spoil" class="chip sel" aria-label="Hasta qué libro has leído">
-      <option value="1">Juego de tronos</option><option value="2">Choque de reyes</option><option value="3">Tormenta de espadas</option>
-      <option value="4">Festín de cuervos</option><option value="5">Danza de dragones</option>
-    </select>
-    <span class="sep"></span>
-    <span class="lbl">Vista</span>
-    <button class="chip mode" data-mode="2d" aria-pressed="true">2D</button><button class="chip mode" data-mode="3d" aria-pressed="false">3D</button>
-    <span class="sep"></span>
-    <span class="lbl">Mostrar</span>
-    <button class="chip" data-type="city" aria-pressed="true"><svg viewBox="-6 -6 12 12"><circle r="4.2" class="leg-sym"/></svg>Ciudades</button>
-    <button class="chip" data-type="castle" aria-pressed="true"><svg viewBox="-6 -6 12 12"><rect x="-3.3" y="-3.3" width="6.6" height="6.6" transform="rotate(45)" class="leg-sym"/></svg>Castillos</button>
-    <button class="chip" data-type="town" aria-pressed="true"><svg viewBox="-6 -6 12 12"><circle r="2.4" class="leg-sym"/></svg>Pueblos</button>
-    <button class="chip" data-type="ruin" aria-pressed="true"><svg viewBox="-6 -6 12 12"><g class="leg-sym"><circle cy="-2.6" r="1.4"/><circle cx="-2.5" cy="1.8" r="1.4"/><circle cx="2.5" cy="1.8" r="1.4"/></g></svg>Ruinas</button>
-    <span class="sep"></span>
-    <span class="lbl">Capas</span>
-    <button class="chip" data-layer="regions" aria-pressed="true">Reinos</button>
-    <button class="chip" data-layer="rivers" aria-pressed="true">Ríos</button>
-    <button class="chip" data-layer="roads" aria-pressed="true">Caminos</button>
-    <button class="chip" data-atmo="shields" aria-pressed="true">Escudos</button>
-    <button class="chip" data-atmo="winter" aria-pressed="true">Invierno</button>
-    <span class="sep"></span>
-    <button class="chip measure" id="measureBtn" aria-pressed="false"><svg viewBox="0 0 12 12"><path d="M1 11L11 1M3 7l2 2M5 5l2 2M7 3l2 2" stroke="currentColor" fill="none" stroke-width="1.3"/></svg>Medir distancia</button>
-    <button class="chip" id="routesBtn"><svg viewBox="0 0 12 12"><path d="M1 10c3-1 2-5 5-5s2-4 5-4" stroke="currentColor" fill="none" stroke-width="1.3" stroke-dasharray="2 1.5"/></svg>Viajes</button>
-    <button class="chip" id="tlBtn" aria-pressed="false"><svg viewBox="0 0 12 12"><path d="M1 6h10M3 3v6M9 3v6" stroke="currentColor" fill="none" stroke-width="1.3"/></svg>Línea de tiempo</button>
-    <button class="chip" id="nearBtn"><svg viewBox="0 0 12 12"><circle cx="4.5" cy="6" r="3.3" stroke="currentColor" fill="none" stroke-width="1.3"/><circle cx="7.5" cy="6" r="3.3" stroke="currentColor" fill="none" stroke-width="1.3"/></svg>Encuentros</button>
-    <button class="chip" id="ravenBtn"><svg viewBox="0 0 12 12"><path d="M1 7c2-3 4-3 5-1 1-2 3-2 5 1-2-1-3 0-5 2-2-2-3-3-5-2z" fill="currentColor"/></svg>Cuervos</button>
-    <span class="sep"></span>
-    <button class="chip" id="soundBtn" aria-pressed="false" title="Sonido ambiental"><svg viewBox="0 0 12 12"><path d="M1 4.5h2.5L6.5 2v8L3.5 7.5H1z" fill="currentColor"/><path class="snd-w" d="M8.2 4c.8.7.8 3.3 0 4M9.8 2.6c1.6 1.4 1.6 5.4 0 6.8" stroke="currentColor" fill="none" stroke-width="1.1" stroke-linecap="round"/></svg><span id="soundLbl">Sonido</span></button>
+  <nav class="tabs" role="tablist" aria-label="Qué quieres hacer">
+    <button class="tab" role="tab" data-tab="explorar" aria-selected="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3"/><path d="M10.6 5.4 9 9 5.4 10.6 7 7z" class="fill"/></svg>Explorar</button>
+    <button class="tab" role="tab" data-tab="viajes" aria-selected="false"><svg viewBox="0 0 16 16"><path d="M2 13c3-1 2.5-6 6-6s3-4 6-5" stroke-dasharray="2.2 1.8"/><circle cx="2" cy="13" r="1.4" class="fill"/></svg>Viajes</button>
+    <button class="tab" role="tab" data-tab="tiempo" aria-selected="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3"/><path d="M8 4.5V8l2.5 1.6"/></svg><span class="lg">Línea de tiempo</span><span class="sm">Tiempo</span></button>
+    <button class="tab" role="tab" data-tab="historias" aria-selected="false"><svg viewBox="0 0 16 16"><path d="M4 2.5h7.5a1.5 1.5 0 0 1 1.5 1.5v9H5.5A1.5 1.5 0 0 1 4 11.5z"/><path d="M6.5 5.5h4M6.5 8h4"/></svg>Historias</button>
+  </nav>
+  <div hidden>
+    <button id="routesBtn"></button><button id="tlBtn" aria-pressed="false"></button><button id="nearBtn"></button><button id="ravenBtn"></button>
+    <button class="chip mode" data-mode="2d" aria-pressed="true"></button><button class="chip mode" data-mode="3d" aria-pressed="false"></button>
   </div>
 
   <main class="stage">
     <div class="map" id="map">
       <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mapa interactivo de Poniente"></svg>
       <canvas id="flakes" aria-hidden="true"></canvas>
-      <div class="ctl presets" role="group" aria-label="Vistas">
+      <label class="ctl goto"><span class="sr">Ir a</span>
+        <select id="gotoSel" aria-label="Ir a una zona del mapa">
+          <option value="">Ir a…</option><option value="north">El Norte</option><option value="south">El Sur</option>
+          <option value="all">Todo Poniente</option><option value="essos">Essos</option><option value="world">El mundo entero</option>
+        </select>
+      </label>
+      <div class="presets" hidden>
         <button data-preset="north">Norte</button>
         <button data-preset="south">Sur</button>
         <button data-preset="all">Poniente</button>
         <button data-preset="essos">Essos</button>
         <button data-preset="world">Mundo</button>
       </div>
-      <div class="ctl zoom" role="group" aria-label="Zoom">
-        <button id="zin" aria-label="Acercar">+</button>
-        <button id="zout" aria-label="Alejar">−</button>
+      <div class="ctl mtools">
+        <div class="mgroup" role="group" aria-label="Zoom">
+          <button class="mbtn" id="zin" aria-label="Acercar" data-tip="Acercar">+</button>
+          <button class="mbtn" id="zout" aria-label="Alejar" data-tip="Alejar">−</button>
+        </div>
+        <div class="mgroup">
+          <button class="mbtn txt" id="viewBtn" data-tip="Ver en 3D, con relieve">3D</button>
+          <button class="mbtn" id="layersBtn" aria-expanded="false" aria-controls="layersPop" aria-label="Capas y filtros" data-tip="Qué mostrar en el mapa"><svg viewBox="0 0 16 16"><path d="M8 2 1.5 5.3 8 8.6l6.5-3.3z"/><path d="m1.5 8.2 6.5 3.3 6.5-3.3M1.5 11 8 14.3 14.5 11"/></svg></button>
+          <button class="mbtn measure" id="measureBtn" aria-pressed="false" aria-label="Medir distancia" data-tip="Medir distancia"><svg viewBox="0 0 16 16"><path d="M2 14 14 2M5 9l2 2M7 7l2 2M9 5l2 2"/></svg></button>
+          <button class="mbtn" id="soundBtn" aria-pressed="false" aria-label="Sonido ambiental" data-tip="Sonido ambiental"><svg viewBox="0 0 16 16"><path d="M2 6h3l3.5-3v10L5 10H2z" class="fill"/><path class="snd-w" d="M11 5.5c1 .8 1 4.2 0 5M12.8 3.8c2 1.7 2 6.7 0 8.4"/></svg><span id="soundLbl" class="sr">Sonido</span></button>
+        </div>
       </div>
+      <div class="ctl lpop" id="layersPop" hidden role="dialog" aria-label="Capas y filtros">
+        <div class="lp-h">Lugares</div>
+        <button class="chip" data-type="city" aria-pressed="true"><svg viewBox="-6 -6 12 12"><circle r="4.2" class="leg-sym"/></svg>Ciudades</button>
+        <button class="chip" data-type="castle" aria-pressed="true"><svg viewBox="-6 -6 12 12"><rect x="-3.3" y="-3.3" width="6.6" height="6.6" transform="rotate(45)" class="leg-sym"/></svg>Castillos</button>
+        <button class="chip" data-type="town" aria-pressed="true"><svg viewBox="-6 -6 12 12"><circle r="2.4" class="leg-sym"/></svg>Pueblos</button>
+        <button class="chip" data-type="ruin" aria-pressed="true"><svg viewBox="-6 -6 12 12"><g class="leg-sym"><circle cy="-2.6" r="1.4"/><circle cx="-2.5" cy="1.8" r="1.4"/><circle cx="2.5" cy="1.8" r="1.4"/></g></svg>Ruinas</button>
+        <div class="lp-h">Mapa</div>
+        <button class="chip" data-layer="regions" aria-pressed="true">Colores de los reinos</button>
+        <button class="chip" data-layer="rivers" aria-pressed="true">Ríos</button>
+        <button class="chip" data-layer="roads" aria-pressed="true">Caminos</button>
+        <button class="chip" data-atmo="shields" aria-pressed="true">Escudos de las casas</button>
+        <button class="chip" data-atmo="winter" aria-pressed="true">Nieve del invierno</button>
+      </div>
+      <div class="ctl hint3d">Arrastra para moverte · botón derecho, Mayús o dos dedos para girar</div>
       <div class="ctl scalebar" id="scale"><div class="bar-line" id="scaleLine"></div><span id="scaleTxt"></span></div>
       <div class="ctl hint" id="hint" hidden>Toca dos puntos del mapa</div>
       <div class="ctl cine" id="cine" hidden>
@@ -1910,24 +1997,33 @@ function renderIntro(){
   const regsE=Object.entries(REGIONS).filter(([,R])=>R.essos).map(regRow).join("");
   panel.innerHTML=`
     <h2>Poniente</h2>
-    <p class="lead">Toca un castillo, una ciudad o un reino para leer su historia, o sigue el viaje de un personaje. Arrastra para moverte y usa la rueda o los dedos para acercarte. En 3D, arrastra con el botón derecho, con Mayús o con dos dedos para girar e inclinar el mapa.</p>
-    <h3>Leyenda</h3>
-    <div class="legend">
-      <div>${symSvg("city")}Ciudades</div><div>${symSvg("castle")}Castillos</div>
-      <div>${symSvg("town")}Pueblos</div><div>${symSvg("ruin")}Ruinas</div>
-      <div><svg viewBox="0 0 22 14"><path d="M1 7h20" class="leg-road"/></svg>Caminos</div>
-      <div><svg viewBox="0 0 22 14"><path d="M1 9c5-6 9 2 20-4" class="leg-river"/></svg>Ríos</div>
-      <div><svg viewBox="0 0 22 14"><path d="M3 7h16" class="leg-wall"/><path d="M3 7h16" class="leg-wall2"/></svg>El Muro</div>
+    <p class="lead">El mundo de <i>Canción de hielo y fuego</i>. Toca cualquier castillo, ciudad o reino del mapa para leer su historia.</p>
+    <div class="start">
+      <button data-tab="viajes"><svg viewBox="0 0 16 16"><path d="M2 13c3-1 2.5-6 6-6s3-4 6-5" stroke-dasharray="2.2 1.8"/><circle cx="2" cy="13" r="1.4" class="fill"/></svg><b>Sigue un viaje</b><span>Arya, Jon, Daenerys y más de 130 personajes, etapa por etapa</span></button>
+      <button data-tab="tiempo"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3"/><path d="M8 4.5V8l2.5 1.6"/></svg><b>Mira la historia avanzar</b><span>Todos los personajes moviéndose a la vez, libro a libro</span></button>
+      <button data-tab="historias"><svg viewBox="0 0 16 16"><path d="M4 2.5h7.5a1.5 1.5 0 0 1 1.5 1.5v9H5.5A1.5 1.5 0 0 1 4 11.5z"/><path d="M6.5 5.5h4M6.5 8h4"/></svg><b>Descubre historias</b><span>Encuentros que casi ocurren y cuervos con cartas famosas</span></button>
     </div>
-    <button class="near-card" data-go="near"><b>Encuentros que casi ocurren</b><span>Cuando dos personajes estuvieron a punto de cruzarse</span></button>
-    <button class="near-card" data-go="ravens"><b>Cuervos</b><span>Las cartas que cambiaron la historia, volando sobre el mapa</span></button>
-    <h3>Viajes de personajes</h3>
-    <ul class="list">${ROUTES.filter(r=>!r.hidden).map(routeRow).join("")}</ul>
+    <details class="help"><summary>Cómo usar el mapa</summary>
+      <ul>
+        <li><b>Moverte:</b> arrastra el mapa. Acércate con la rueda, pellizcando o con <b>+</b> y <b>−</b>.</li>
+        <li><b>Ir a una zona:</b> usa <i>Ir a…</i>, arriba a la izquierda del mapa.</li>
+        <li><b>3D:</b> el botón <b>3D</b> levanta las montañas. Gira la vista con el botón derecho, con Mayús o con dos dedos.</li>
+        <li><b>Qué se ve:</b> el botón de capas permite ocultar pueblos, ríos, escudos o la nieve.</li>
+        <li><b>Sin spoilers:</b> elige arriba hasta qué libro has leído y el mapa oculta el resto.</li>
+      </ul>
+      <div class="legend">
+        <div>${symSvg("city")}Ciudades</div><div>${symSvg("castle")}Castillos</div>
+        <div>${symSvg("town")}Pueblos</div><div>${symSvg("ruin")}Ruinas</div>
+        <div><svg viewBox="0 0 22 14"><path d="M1 7h20" class="leg-road"/></svg>Caminos</div>
+        <div><svg viewBox="0 0 22 14"><path d="M1 9c5-6 9 2 20-4" class="leg-river"/></svg>Ríos</div>
+        <div><svg viewBox="0 0 22 14"><path d="M3 7h16" class="leg-wall"/><path d="M3 7h16" class="leg-wall2"/></svg>El Muro</div>
+      </div>
+    </details>
     <h3 class="sub-h">Los Siete Reinos</h3>
     <ul class="list">${regs}</ul>
     <h3 class="sub-h">Essos y más allá</h3>
     <ul class="list">${regsE}</ul>
-    <p class="note">La escala sale del Muro, que mide 300 millas de costa a costa. Las distancias son aproximadas, como en los mapas de los libros.</p>`;
+    <p class="note">La escala sale del Muro, que mide 300 millas de costa a costa. Las distancias son aproximadas.</p>`;
 }
 function renderRegion(id, fly){
   const R=REGIONS[id]; state.region=id; state.place=null; clearMarks(); drawRoute(null); regEls[id].classList.add("on"); texDirty();
@@ -2951,6 +3047,62 @@ async function setSound(on){
 }
 soundBtn.onclick=()=>setSound(!snd.on);
 document.addEventListener("visibilitychange",()=>{ if(!snd.ctx||!snd.on) return; document.hidden?snd.ctx.suspend():snd.ctx.resume(); });
+
+
+/* ---------- Simpler navigation: four tabs, a layers popover and one map tool stack ---------- */
+const tabs=[...document.querySelectorAll(".tab")];
+function setTab(name){ tabs.forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===name)); }
+function renderStories(){
+  stopCine(); if(state.tl) setTL(false); if(state.measure) setMeasure(false);
+  cancelAnimationFrame(ravenAnim); gRaven.innerHTML=""; drawRoute(null); clearMarks();
+  const nn=nearVisible().length, nr=RAVENS.filter(r=>r.book<=state.spoil).length;
+  panel.innerHTML=`<div class="crumb"><button data-go="intro">Poniente</button><span>›</span><span>Historias</span></div>
+    <h2>Historias</h2>
+    <p class="lead">Momentos especiales de la saga, contados sobre el mapa.</p>
+    <div class="start">
+      <button data-go="near"><svg viewBox="0 0 16 16"><circle cx="6" cy="8" r="4"/><circle cx="10" cy="8" r="4"/></svg><b>Encuentros que casi ocurren</b><span>${nn?`${nn} momentos en que dos personajes estuvieron a punto de cruzarse`:"Aparecerán cuando avances en la lectura"}</span></button>
+      <button data-go="ravens"><svg viewBox="0 0 16 16"><path d="M1.5 9.5c2.5-4 5.5-4 6.5-1.5 1-2.5 4-2.5 6.5 1.5-2.5-1.3-4-.2-6.5 2.6-2.5-2.8-4-3.9-6.5-2.6z" class="fill"/></svg><b>Cuervos</b><span>${nr?`${nr} cartas que cambiaron la historia, volando sobre el mapa`:"Aparecerán cuando avances en la lectura"}</span></button>
+    </div>
+    <p class="note" style="margin-top:14px">${spoilNote()}</p>`;
+  setTab("historias");
+}
+// keep the selected tab in sync with whatever the panel is showing
+const wrapTab=(name,fn)=>function(...a){ const r=fn.apply(this,a); setTab(name); return r; };
+renderIntro=wrapTab("explorar",renderIntro); renderPlace=wrapTab("explorar",renderPlace); renderRegion=wrapTab("explorar",renderRegion);
+renderRoutes=wrapTab("viajes",renderRoutes); renderRoute=wrapTab("viajes",renderRoute);
+renderNear=wrapTab("historias",renderNear); showNear=wrapTab("historias",showNear); renderRavens=wrapTab("historias",renderRavens); flyRaven=wrapTab("historias",flyRaven);
+{ const _set=setTL; setTL=function(on){ const r=_set(on); if(on) setTab("tiempo"); return r; }; }
+function goTab(name){
+  closeLayers();
+  if(name==="explorar"){ stopCine(); if(state.tl) setTL(false); else { if(state.measure) setMeasure(false); renderIntro(); } }
+  else if(name==="viajes"){ stopCine(); if(state.tl) setTL(false); if(state.measure) setMeasure(false); renderRoutes(); }
+  else if(name==="tiempo"){ if(!state.tl) setTL(true); else setTab("tiempo"); }
+  else if(name==="historias") renderStories();
+  panel.scrollTop=0;
+}
+tabs.forEach(t=>t.addEventListener("click",()=>goTab(t.dataset.tab)));
+document.getElementById("tlBtn").onclick=()=>goTab("tiempo");
+panel.addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b){ e.stopImmediatePropagation(); goTab(b.dataset.tab); } },true);
+
+// layers popover
+const layersBtn=document.getElementById("layersBtn"), layersPop=document.getElementById("layersPop");
+function closeLayers(){ layersPop.hidden=true; layersBtn.setAttribute("aria-expanded","false"); }
+layersBtn.onclick=e=>{ e.stopPropagation(); const open=layersPop.hidden; layersPop.hidden=!open; layersBtn.setAttribute("aria-expanded",open); };
+document.addEventListener("click",e=>{ if(!layersPop.hidden && !e.target.closest("#layersPop,#layersBtn")) closeLayers(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !layersPop.hidden){ closeLayers(); layersBtn.focus(); } });
+layersPop.addEventListener("pointerdown",e=>e.stopPropagation());
+
+// "Ir a…" select drives the old preset buttons
+const gotoSel=document.getElementById("gotoSel");
+gotoSel.addEventListener("change",()=>{ const v=gotoSel.value; if(v) document.querySelector(`[data-preset="${v}"]`).click(); gotoSel.value=""; });
+document.querySelector(".goto").addEventListener("pointerdown",e=>e.stopPropagation());
+document.querySelector(".mtools").addEventListener("pointerdown",e=>e.stopPropagation());
+
+// single 2D/3D switch
+const viewBtn=document.getElementById("viewBtn"), btn3d=document.querySelector('[data-mode="3d"]'), btn2d=document.querySelector('[data-mode="2d"]');
+const syncView=()=>{ const on=btn3d.getAttribute("aria-pressed")==="true"; viewBtn.textContent=on?"2D":"3D"; viewBtn.dataset.tip=on?"Volver al mapa plano":"Ver en 3D, con relieve"; viewBtn.setAttribute("aria-label",viewBtn.dataset.tip); };
+new MutationObserver(syncView).observe(btn3d,{attributes:true,attributeFilter:["aria-pressed"]}); syncView();
+viewBtn.onclick=()=>{ (btn3d.getAttribute("aria-pressed")==="true"?btn2d:btn3d).click(); };
 
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
