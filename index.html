@@ -107,6 +107,8 @@ button{font:inherit;color:inherit}
 .scalebar{left:14px;bottom:14px;padding:6px 10px 5px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;font-size:12px;color:var(--ink-2);pointer-events:none}
 .scalebar .bar-line{height:6px;border:1px solid var(--ink);border-top:0;margin-bottom:3px;background:linear-gradient(90deg,var(--ink) 0 50%,transparent 50% 100%) bottom/100% 3px no-repeat}
 .scalebar span{font-variant-numeric:tabular-nums}
+.scalebar small{display:block;font-size:11px;opacity:.8}
+.scalebar small[hidden]{display:none}
 .hint{left:50%;bottom:14px;transform:translateX(-50%);padding:6px 12px;background:var(--accent);color:var(--panel);border-radius:999px;font-size:13px;white-space:nowrap;pointer-events:none}
 
 /* SVG map styling */
@@ -306,7 +308,6 @@ button{font:inherit;color:inherit}
 .chip.mode[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
 .chip.mode+.chip.mode{margin-left:-6px;border-top-left-radius:0;border-bottom-left-radius:0}
 .chip.mode:first-of-type{border-top-right-radius:0;border-bottom-right-radius:0}
-.map.is3d .scalebar{display:none}
 .chip.sel{appearance:none;-webkit-appearance:none;padding-right:26px;font:inherit;font-size:14px;color:var(--ink);background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236a5f4e' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 9px center/10px 6px;border-color:var(--ink-2)}
 #tlBtn[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
 .tlbar{left:14px;right:64px;bottom:14px;display:flex;align-items:center;gap:12px;padding:8px 14px 6px;background:var(--panel);border:1px solid var(--ink-2);border-radius:3px}
@@ -420,7 +421,7 @@ button{font:inherit;color:inherit}
 .lpop .chip[aria-pressed="true"]::before{background:var(--sel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.5-5' fill='none' stroke='%23f8f3e6' stroke-width='1.8'/%3E%3C/svg%3E") center/12px no-repeat;border-color:var(--sel)}
 .lpop .chip:hover{background:var(--accent-soft)}
 .lpop .chip[aria-pressed="false"]{color:var(--ink-2)}
-.hint3d{display:none;left:14px;bottom:14px;padding:6px 10px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;font-size:13px;color:var(--ink-2);pointer-events:none}
+.hint3d{display:none;right:14px;bottom:14px;padding:6px 10px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;font-size:13px;color:var(--ink-2);pointer-events:none}
 .map.is3d .hint3d{display:block}
 .map.cinema .hint3d,.map.tl .hint3d{display:none}
 .map.cinema .goto,.map.cinema .mtools{display:none}
@@ -580,7 +581,7 @@ button{font:inherit;color:inherit}
         <button class="chip" data-atmo="winter" aria-pressed="true">Nieve del invierno</button>
       </div>
       <div class="ctl hint3d">Arrastra para moverte · botón derecho, Mayús o dos dedos para girar</div>
-      <div class="ctl scalebar" id="scale"><div class="bar-line" id="scaleLine"></div><span id="scaleTxt"></span></div>
+      <div class="ctl scalebar" id="scale"><div class="bar-line" id="scaleLine"></div><span id="scaleTxt"></span><small id="scaleNote" hidden></small></div>
       <div class="ctl hint" id="hint" hidden>Toca dos puntos del mapa</div>
       <div class="ctl cine" id="cine" hidden>
         <div class="cine-cap" id="cineCap"><div class="cine-k" id="cineK"></div><div class="cine-h" id="cineH"></div><div class="cine-t" id="cineT"></div></div>
@@ -2008,11 +2009,24 @@ function zoomAt(px,py,factor){
   const mx=view.x+px*k, my=view.y+py*k, nw=base.w/nz, nk=nw/cw;
   const nx=mx-px*nk, ny=my-py*nk; setView(nx+nw/2, ny+nw*ch/cw/2, nz);
 }
-function drawScale(){
-  const target=110*k*MPU, nice=[10,25,50,100,200,250,500,1000,2000,5000];
+function drawScale(kk,note){
+  if(kk==null){ if(mapEl.classList.contains("is3d")) return; kk=k; } // 3D draws its own
+  const target=110*kk*MPU, nice=[5,10,25,50,100,200,250,500,1000,2000,5000];
   let m=nice[0]; for(const v of nice) if(v<=target) m=v;
-  document.getElementById("scaleLine").style.width=(m/MPU/k).toFixed(1)+"px";
+  document.getElementById("scaleLine").style.width=(m/MPU/kk).toFixed(1)+"px";
   document.getElementById("scaleTxt").textContent=`${m} millas · ${Math.round(m*1.609)} km`;
+  const n=document.getElementById("scaleNote"); n.hidden=!note; n.textContent=note||"";
+}
+// 3D: the size of a mile changes with distance, so measure it at the centre of the view
+function drawScale3(){
+  if(!view3d.on||!view3d.ready) return;
+  const t=controls.target, h=Math.max(0,heightAt(t.x+WX/2,t.z+HY/2));
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); right.y=0;
+  if(right.lengthSq()<1e-6) return; right.normalize();
+  const a=new THREE.Vector3(t.x,h,t.z), b=a.clone().addScaledVector(right,100);
+  a.project(camera); b.project(camera);
+  const px=Math.hypot((b.x-a.x)/2*mapEl.clientWidth,(b.y-a.y)/2*mapEl.clientHeight);
+  if(px>0.5) drawScale(100/px,"en el centro de la vista");
 }
 base=fitView(); view={x:0,y:0,w:base.w,h:base.h}; setView(W/2,H/2,1);
 new ResizeObserver(()=>{ if(!view) return; const [cx,cy]=center(), zz=z; base=fitView(); setView(cx,cy,zz); }).observe(mapEl);
@@ -2444,7 +2458,7 @@ function drawTex(){
   if(typeof atmo!=="undefined" && atmo.winter){
     const sc=tok("--snow")||"#ffffff", op=parseFloat(tok("--snow-op"))||.5, Y=atmo.Y;
     const n=parseInt(sc.replace("#",""),16), rgb=`${n>>16&255},${n>>8&255},${n&255}`;
-    const gr=g.createLinearGradient(0,Y-260,0,Y+40); gr.addColorStop(0,`rgba(${rgb},${Math.min(1,op*1.2)})`); gr.addColorStop(1,`rgba(${rgb},0)`);
+    const gr=g.createLinearGradient(0,Y-260,0,Y+40); gr.addColorStop(0,`rgba(${rgb},${Math.min(1,op*.85)})`); gr.addColorStop(1,`rgba(${rgb},0)`);
     g.fillStyle=gr; g.fillRect(0,-60,WX,Y+100);
   }
   g.globalAlpha=.4; g.fillStyle=tok("--ink");
@@ -2575,7 +2589,7 @@ function loop(){
   if(tex3Dirty){ tex3Dirty=false; drawTex(); }
   if(!dirty) return; dirty=false;
   const d=camera.position.distanceTo(controls.target); scene.fog.near=d*1.4; scene.fog.far=d*4.2;
-  renderer.render(scene,camera); updateLabels();
+  renderer.render(scene,camera); updateLabels(); drawScale3();
 }
 function route3D(r){
   if(!view3d.ready) return;
@@ -2603,7 +2617,7 @@ function setMode(want3d){
   const btn=m=>modeBtns.forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===(m?"3d":"2d")));
   if(!want3d){
     if(view3d.on && view3d.ready){ const [cx,cy]=curCenter(), zz=curZ(); view3d.on=false; setView(cx,cy,zz); }
-    view3d.on=false; wrap3.hidden=true; loading3.hidden=true; mapEl.classList.remove("is3d"); btn(false);
+    view3d.on=false; wrap3.hidden=true; loading3.hidden=true; mapEl.classList.remove("is3d"); btn(false); document.getElementById("scaleNote").hidden=true; drawScale();
     try{localStorage.setItem("poniente-mode","2d");}catch(_){}
     return;
   }
