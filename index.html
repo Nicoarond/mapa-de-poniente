@@ -3103,7 +3103,7 @@ function buildSound(){
   const src=()=>{ const n=ctx.createBufferSource(); n.buffer=buf; n.loop=true; n.start(0,Math.random()*3); return n; };
   // cold wind: band-passed noise with a wandering centre frequency
   { const n=src(), bp=ctx.createBiquadFilter(), g=ctx.createGain(), out=ctx.createGain(); bp.type="bandpass"; bp.Q.value=1.4;
-    lfo(ctx,.07,260,bp.frequency,480); lfo(ctx,.13,.35,g.gain,.6);
+    lfo(ctx,.07,260,bp.frequency,480); lfo(ctx,.13,.35,g.gain,.6); snd.windBP=bp;
     out.gain.value=0; n.connect(bp); bp.connect(g); g.connect(out); out.connect(master); snd.layers.wind=out; }
   // sea: low-passed noise that swells like waves
   { const n=src(), lp=ctx.createBiquadFilter(), g=ctx.createGain(), out=ctx.createGain(); lp.type="lowpass"; lp.frequency.value=520;
@@ -3132,16 +3132,25 @@ const MIX={"viento del norte":{wind:.9,sea:0,breeze:.05},"mar helado":{wind:.45,
 const ZONE_LBL={"viento del norte":"Viento del norte","mar helado":"Mar helado","mar":"Mar","brisa":"Brisa","brisa de Dorne":"Viento del desierto","llanuras de Essos":"Viento de las llanuras"};
 function updateSound(){
   if(!snd.on) return;
-  const z=soundZone(), m=MIX[z], t=snd.ctx.currentTime;
+  const z=soundZone(), m={...MIX[z]}, t=snd.ctx.currentTime; let lbl=ZONE_LBL[z], high=0;
+  // in 3D the wind follows the height: stronger and higher-pitched as the camera climbs, and over mountain ranges
+  if(view3d.on && view3d.ready){
+    const tg=controls.target, mx=tg.x+WX/2, my=tg.z+HY/2, gh=Math.max(0,heightAt(mx,my));
+    high=Math.max(0,Math.min(1,(camera.position.y-gh-250)/1600));
+    const mtn=onLand(mx,my)&&gh>16 ? Math.min(1,(gh-16)/20) : 0;
+    m.wind=Math.min(1.1,m.wind+high*.7+mtn*.6); m.sea*=1-high*.6; m.breeze*=1-high*.7;
+    if(high>.55) lbl="Viento de las alturas"; else if(mtn>.3) lbl="Viento de montaña";
+    snd.windBP.frequency.setTargetAtTime(480+380*high+150*mtn,t,1.5);
+  } else snd.windBP.frequency.setTargetAtTime(480,t,1.5);
   for(const k in snd.layers){ const g=snd.layers[k].gain; g.cancelScheduledValues(t); g.setTargetAtTime(m[k],t,1.2); }
-  if(z!==snd.zone){ snd.zone=z; soundLbl.textContent=ZONE_LBL[z]; }
-  if((z==="brisa"||z==="brisa de Dorne") && performance.now()>snd.birdT){ if(snd.birdT) chirp(); snd.birdT=performance.now()+4000+Math.random()*7000; }
+  if(lbl!==snd.zone){ snd.zone=lbl; soundLbl.textContent=lbl; soundBtn.dataset.tip="Sonando: "+lbl.toLowerCase(); }
+  if((z==="brisa"||z==="brisa de Dorne") && high<.55 && performance.now()>snd.birdT){ if(snd.birdT) chirp(); snd.birdT=performance.now()+4000+Math.random()*7000; }
 }
 async function setSound(on){
   if(on && !snd.ctx && !buildSound()){ soundLbl.textContent="Sin sonido"; return; }
   snd.on=on; soundBtn.setAttribute("aria-pressed",on);
   if(on){ await snd.ctx.resume(); snd.zone=""; updateSound(); clearInterval(snd.timer); snd.timer=setInterval(updateSound,400); }
-  else { clearInterval(snd.timer); soundLbl.textContent="Sonido";
+  else { clearInterval(snd.timer); soundLbl.textContent="Sonido"; soundBtn.dataset.tip="Sonido ambiental";
     if(snd.ctx){ const t=snd.ctx.currentTime; for(const k in snd.layers) snd.layers[k].gain.setTargetAtTime(0,t,.3); setTimeout(()=>{ if(!snd.on) snd.ctx.suspend(); },1500); } }
 }
 soundBtn.onclick=()=>setSound(!snd.on);
