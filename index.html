@@ -271,6 +271,18 @@ button{font:inherit;color:inherit}
 .labels3d.zw .loc3 span{display:none}
 .labels3d.zw .loc3.w1 span,.labels3d.zw .loc3.sel span{display:block}
 .labels3d.hide-city .t-city,.labels3d.hide-castle .t-castle,.labels3d.hide-town .t-town,.labels3d.hide-ruin .t-ruin{display:none}
+.sh3{pointer-events:auto;cursor:pointer;border:0;background:none;padding:0}
+.sh3 .in{transform:translate(-118%,-112%)}
+.sh3 svg{display:block;width:22px;height:26px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+.sh3:hover svg .sh-b{stroke:var(--accent);stroke-width:1.8px}
+.labels3d .sh3.minor{display:none}
+.labels3d.z2 .sh3.minor{display:block}
+.labels3d.zw .sh3,.labels3d.no-shields .sh3{display:none!important}
+.mp3 .in{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--panel);border:2px solid var(--land);font:700 12px var(--f-ui)}
+.star3 .in{display:grid;place-items:center;transform:translate(-50%,-50%)}
+.star3 svg{width:30px;height:30px;overflow:visible}
+.star3 b{position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 12px var(--f-ui);color:var(--accent);text-shadow:0 0 2px var(--land),0 0 3px var(--land),0 0 4px var(--land)}
+.map.measuring .map3d canvas{cursor:crosshair}
 .tlm3{pointer-events:auto;cursor:pointer;border:0;background:none;padding:0;color:var(--ink)}
 .tlm3 .in{display:flex;align-items:center;gap:4px;transform:translate(-7px,-50%)}
 .tlm3 i{width:9px;height:9px;border-radius:50%;background:var(--rc);border:2px solid var(--land);flex:none}
@@ -351,7 +363,7 @@ button{font:inherit;color:inherit}
 .snow-fill{fill:url(#snowFade)}
 .snow-dots{fill:url(#snowDots)}
 #flakes{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.map.is3d #flakes{display:none}
+.map.is3d #flakes{z-index:2}
 .shield{cursor:pointer}
 #svg .shield.minor{display:none}
 #svg.z2 .shield.minor{display:inline}
@@ -2221,7 +2233,6 @@ function renderRoute(id,fly){
 /* ---------- Measuring ---------- */
 const measureBtn=document.getElementById("measureBtn"), hint=document.getElementById("hint");
 function setMeasure(on, start){
-  if(on && view3d.on) setMode(false);
   state.measure=on; measureBtn.setAttribute("aria-pressed",on); mapEl.classList.toggle("measuring",on);
   state.m = on && start ? [start] : [];
   hint.hidden=!on || state.m.length>=2;
@@ -2430,6 +2441,12 @@ function drawTex(){
     for(const id in REGIONS) if(id!=="beyond") g.stroke(new Path2D(polyD(REGIONS[id].poly)));
     g.setLineDash([]); g.globalAlpha=1;
   }
+  if(typeof atmo!=="undefined" && atmo.winter){
+    const sc=tok("--snow")||"#ffffff", op=parseFloat(tok("--snow-op"))||.5, Y=atmo.Y;
+    const n=parseInt(sc.replace("#",""),16), rgb=`${n>>16&255},${n>>8&255},${n&255}`;
+    const gr=g.createLinearGradient(0,Y-260,0,Y+40); gr.addColorStop(0,`rgba(${rgb},${Math.min(1,op*1.2)})`); gr.addColorStop(1,`rgba(${rgb},0)`);
+    g.fillStyle=gr; g.fillRect(0,-60,WX,Y+100);
+  }
   g.globalAlpha=.4; g.fillStyle=tok("--ink");
   for(const [x,y,r] of TREES){ g.beginPath(); g.arc(x,y,r*.8,0,Math.PI*2); g.fill(); }
   g.globalAlpha=1; g.restore();
@@ -2510,7 +2527,7 @@ function build3D(){
     if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>5||e.button!==0) return;
     const r=renderer.domElement.getBoundingClientRect(); mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
     ray.setFromCamera(mv,camera); const hit=ray.intersectObject(terrain)[0]; if(!hit) return;
-    const x=hit.point.x+WX/2, y=hit.point.z+HY/2; if(!onLand(x,y)) return;
+    const x=hit.point.x+WX/2, y=hit.point.z+HY/2; if(state.measure){ measureAdd({x,y}); return; } if(!onLand(x,y)) return;
     for(const id in REGIONS) if(cx2d.isPointInPath(new Path2D(polyD(REGIONS[id].poly)),x,y)){ renderRegion(id,false); return; }
   });
 
@@ -2762,7 +2779,7 @@ function renderNear(){
     <p class="note">${spoilNote()}</p>`;
 }
 function showNear(i){
-  const e=NEAR[i]; if(view3d.on) setMode(false); if(state.tl) setTL(false);
+  const e=NEAR[i]; if(state.tl) setTL(false);
   clearMarks(); drawPair(e);
   const ra=RBY[e.a], rb=RBY[e.b];
   panel.innerHTML=`<div class="crumb"><button data-go="intro">Poniente</button><span>›</span><button data-go="near">Encuentros</button><span>›</span><span>${esc(e.A.name)}</span></div>
@@ -2925,11 +2942,11 @@ function sizeFlakes(){ const d=Math.min(2,devicePixelRatio||1); fc.width=mapEl.c
 function flakeTick(now){
   const dt=Math.min(.05,(now-flakeLast)/1000); flakeLast=now;
   const W2=mapEl.clientWidth, H2=mapEl.clientHeight; fx.clearRect(0,0,W2,H2);
-  if(atmo.winter && !view3d.on && !document.hidden){
-    const sy=(atmo.Y-view.y)/k; // screen y of the snowline
+  if(atmo.winter && !document.hidden){
+    const sy=view3d.on?H2:(atmo.Y-view.y)/k; // screen y of the snowline (2D)
     if(sy>0){ fx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--snow").trim()||"#fff";
       for(const p of flakes){ p.y+=p.v*dt; p.w+=dt; p.x+=Math.sin(p.w)*8*dt; if(p.y>H2){p.y=-4;p.x=Math.random()*W2;}
-        if(p.y<sy){ const a=Math.min(1,(sy-p.y)/60); fx.globalAlpha=.85*a; fx.beginPath(); fx.arc(p.x,p.y,p.r,0,6.283); fx.fill(); } }
+        if(view3d.on? inWinter3(p.x,p.y,W2,H2) : p.y<sy){ const a=view3d.on?1:Math.min(1,(sy-p.y)/60); fx.globalAlpha=.85*a; fx.beginPath(); fx.arc(p.x,p.y,p.r,0,6.283); fx.fill(); } }
       fx.globalAlpha=1; }
   }
   flakeRaf=requestAnimationFrame(flakeTick);
@@ -3304,6 +3321,78 @@ new MutationObserver(()=>{
   const on3d=btn3d.getAttribute("aria-pressed")==="true";
   if(!on3d){ tl3Clear(); lastKey=""; renderTL(); return; }
   const wait=()=>{ if(!state.tl) return; if(view3d.on&&view3d.ready){ lastKey=""; renderTL(); } else setTimeout(wait,150); }; setTimeout(wait,150);
+}).observe(btn3d,{attributes:true,attributeFilter:["aria-pressed"]});
+
+/* ---------- The rest of the map in 3D: shields, winter, measuring and near misses ---------- */
+const x3={shields:false,measure:null,pair:null,lastNear:-1,snowKey:""};
+const on3D=()=>view3d.on&&view3d.ready;
+function dropLabs(flag){ for(let i=labs3.length-1;i>=0;i--) if(labs3[i][flag]){ labs3[i].el.remove(); labs3.splice(i,1); } }
+function disposeGroup(gp){ if(!gp) return; scene.remove(gp); gp.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); }
+function shields3D(){
+  if(x3.shields||!view3d.ready) return;
+  for(const key in HOUSES){ const h=HOUSES[key], pl=BY_ID[h.seat];
+    const b=document.createElement("button"); b.className=`l3 sh3${h.minor?" minor":""}`; b.dataset.place=h.seat; b.setAttribute("aria-label",`Escudo de la Casa ${h.n}`); b.title=`Casa ${h.n}`;
+    b.innerHTML=`<span class="in">${shieldSVG(key)}</span>`; lab3.appendChild(b);
+    labs3.push({el:b,x:pl.x,y:pl.y,h:Math.max(0,heightAt(pl.x,pl.y))+4,sh:1}); }
+  lab3.classList.toggle("no-shields",!atmo.shields); x3.shields=true; dirty=true;
+}
+// flakes: a screen point is in winter if the ground it looks at lies north of the snowline
+let _rv=null; // THREE is loaded on demand
+function inWinter3(sx,sy,W2,H2){
+  _rv=_rv||new THREE.Vector3(); _rv.set(sx/W2*2-1,1-sy/H2*2,.5).unproject(camera).sub(camera.position);
+  if(_rv.y>=-1e-6) return atmo.Y>0 && sy<H2*.25;
+  const tt=-camera.position.y/_rv.y; return camera.position.z+_rv.z*tt+HY/2 < atmo.Y;
+}
+// measuring
+function measureAdd(pt){
+  state.m = state.m.length>=2 ? [pt] : state.m.concat([pt]);
+  hint.hidden=state.m.length>=2; hint.textContent="Ahora toca el destino";
+  drawMeasure(); renderMeasure();
+}
+function measure3D(){
+  disposeGroup(x3.measure); x3.measure=null; dropLabs("mp");
+  if(!on3D()){ return; } const m=state.m; if(!m.length){ dirty=true; return; }
+  if(m.length===2){
+    const pts=[]; for(let i=0;i<=90;i++){ const t=i/90, x=m[0].x+(m[1].x-m[0].x)*t, y=m[0].y+(m[1].y-m[0].y)*t; pts.push(new THREE.Vector3(x-WX/2,Math.max(0,heightAt(x,y))+5,y-HY/2)); }
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:new THREE.Color(tok("--accent")).convertSRGBToLinear(),dashSize:10,gapSize:6}));
+    line.computeLineDistances(); const gp=new THREE.Group(); gp.add(line); scene.add(gp); x3.measure=gp;
+  }
+  m.forEach((pt,i)=>{ const d=document.createElement("div"); d.className="l3 mp3"; d.innerHTML=`<span class="in">${i?"B":"A"}</span>`; lab3.appendChild(d);
+    labs3.push({el:d,x:pt.x,y:pt.y,h:Math.max(0,heightAt(pt.x,pt.y))+6,mp:1}); });
+  dirty=true;
+}
+{ const _dm=drawMeasure; drawMeasure=function(){ const r=_dm(); measure3D(); return r; }; }
+lab3.addEventListener("click",e=>{ const b=e.target.closest(".loc3"); if(b&&state.measure){ e.stopPropagation(); const pl=BY_ID[b.dataset.id]; measureAdd({x:pl.x,y:pl.y}); } });
+lab3.addEventListener("click",e=>{ const b=e.target.closest(".sh3"); if(b&&!state.measure){ e.stopPropagation(); if(state.tl) setTL(false); renderPlace(b.dataset.place,true); } });
+// near misses: both journeys as tubes over the relief, with a star where they almost cross
+function tube3D(r){
+  const base=new THREE.CatmullRomCurve3(r.pts.map(p=>new THREE.Vector3(p.x-WX/2,0,p.y-HY/2)),false,"catmullrom",.5);
+  const N=Math.min(1400,Math.max(120,Math.round(r.miles/3)));
+  const pts=base.getSpacedPoints(N).map(q=>{q.y=Math.max(0,heightAt(q.x+WX/2,q.z+HY/2))+5; return q;});
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),N*2,3.2,6,false),new THREE.MeshBasicMaterial({color:new THREE.Color(r.c).convertSRGBToLinear()}));
+}
+function clearPair3D(){ disposeGroup(x3.pair); x3.pair=null; dropLabs("star"); }
+function pair3D(e){
+  clearPair3D(); if(!on3D()) return;
+  const gp=new THREE.Group(); gp.add(tube3D(RBY[e.a]),tube3D(RBY[e.b])); scene.add(gp); x3.pair=gp;
+  const d=document.createElement("div"); d.className="l3 star3";
+  d.innerHTML=`<span class="in"><svg viewBox="-16 -16 32 32"><circle r="15" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"/><path d="${starPath(10)}" fill="var(--accent)" stroke="var(--land)" stroke-width="1.5"/></svg><b>Casi se cruzan</b></span>`;
+  lab3.appendChild(d); labs3.push({el:d,x:e.A.x,y:e.A.y,h:Math.max(0,heightAt(e.A.x,e.A.y))+8,star:1}); dirty=true;
+}
+{ const _r3=route3D; route3D=function(r){ clearPair3D(); return _r3(r); }; }
+{ const _sn=showNear; showNear=function(i){ const r=_sn(i); x3.lastNear=i; pair3D(NEAR[i]); return r; }; }
+// winter on the 3D terrain follows the snowline
+{ const _ss=setSnow; setSnow=function(){ const r=_ss(); const key=(atmo.winter?1:0)+":"+Math.round(atmo.Y/8);
+  if(view3d.ready && key!==x3.snowKey){ x3.snowKey=key; texDirty(); } return r; }; }
+document.querySelectorAll('[data-atmo="shields"]').forEach(b=>b.addEventListener("click",()=>lab3.classList.toggle("no-shields",!atmo.shields)));
+// whenever the 3D view becomes ready, bring everything across
+new MutationObserver(()=>{
+  const on=btn3d.getAttribute("aria-pressed")==="true";
+  if(!on){ measure3D(); clearPair3D(); return; }
+  const wait=()=>{ if(btn3d.getAttribute("aria-pressed")!=="true") return; if(!on3D()){ setTimeout(wait,150); return; }
+    shields3D(); x3.snowKey=""; setSnow(); measure3D();
+    if(x3.lastNear>=0 && panel.querySelector('[data-act="near-tl"]')) pair3D(NEAR[x3.lastNear]); };
+  setTimeout(wait,150);
 }).observe(btn3d,{attributes:true,attributeFilter:["aria-pressed"]});
 
 renderIntro();
