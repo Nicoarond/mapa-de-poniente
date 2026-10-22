@@ -583,6 +583,8 @@ button{font:inherit;color:inherit}
         <button class="chip" data-layer="roads" aria-pressed="true">Caminos</button>
         <button class="chip" data-atmo="shields" aria-pressed="true">Escudos de las casas</button>
         <button class="chip" data-atmo="winter" aria-pressed="true">Nieve del invierno</button>
+        <div class="lp-h">Sonido</div>
+        <button class="chip" id="fxChip" aria-pressed="true">Efectos de sonido</button>
       </div>
       <div class="ctl hint3d">Arrastra para moverte · botón derecho, Mayús o dos dedos para girar</div>
       <div class="ctl scalebar" id="scale"><div class="bar-line" id="scaleLine"></div><span id="scaleTxt"></span><small id="scaleNote" hidden></small></div>
@@ -3736,6 +3738,88 @@ new MutationObserver(()=>{
   const bn=sv.closest(".banner"); if(bn.querySelector(".hsnd")) return;
   const b=document.createElement("button"); b.className="hsnd"; syncHouseBtn(b); bn.appendChild(b);
 }).observe(panel,{childList:true});
+
+/* ---------- Sound effects for everything else: pages, quills, drums, wind for zoom and the earth rising in 3D ---------- */
+const sfx={on:true,bus:null,last:{}};
+try{ sfx.on=localStorage.getItem("poniente-fx-snd")!=="0"; }catch(_){}
+const fxChip=document.getElementById("fxChip"); fxChip.setAttribute("aria-pressed",sfx.on);
+function fxOut(){
+  if(!sfx.on || !cineAudio()) return null;
+  if(!sfx.bus){ sfx.bus=snd.ctx.createGain(); sfx.bus.gain.value=.55; sfx.bus.connect(csnd.out); }
+  snd.ctx.resume(); return sfx.bus;
+}
+function fxNoise(t,dest,type,f0,f1,dur,vol,q){
+  const ctx=snd.ctx, n=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain();
+  n.buffer=csnd.noise; n.loop=true; n.playbackRate.value=.8+Math.random()*.4; f.type=type; f.Q.value=q||1;
+  f.frequency.setValueAtTime(f0,t); f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+Math.min(.04,dur/3)); g.gain.exponentialRampToValueAtTime(.0008,t+dur);
+  n.connect(f); f.connect(g); g.connect(dest); n.start(t); n.stop(t+dur+.05);
+}
+function fxTone(t,dest,type,f0,f1,dur,vol){
+  const ctx=snd.ctx, o=ctx.createOscillator(), g=ctx.createGain(); o.type=type;
+  o.frequency.setValueAtTime(f0,t); if(f1!==f0) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.008); g.gain.exponentialRampToValueAtTime(.0008,t+dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+.05);
+}
+const FX={
+  page:(t,d)=>{ fxNoise(t,d,"bandpass",3200,1100,.22,.16,.8); fxNoise(t+.12,d,"bandpass",2400,900,.18,.08,.8); },
+  tap:(t,d)=>{ fxTone(t,d,"sine",620,320,.09,.12); fxNoise(t,d,"highpass",3500,3000,.03,.07); },
+  quill:(t,d)=>{ for(let x=t;x<t+.75;x+=.07+Math.random()*.07) fxNoise(x,d,"bandpass",4200+Math.random()*1500,2600,.05+Math.random()*.04,.05,2.5); },
+  drum:(t,d)=>{ fxTone(t,d,"sine",95,48,.45,.28); fxTone(t+.05,d,"sine",80,45,.35,.08); FX.page(t+.15,d); },
+  whooshUp:(t,d)=>fxNoise(t,d,"bandpass",350,1900,.4,.13,1.4),
+  whooshDown:(t,d)=>fxNoise(t,d,"bandpass",1900,350,.4,.13,1.4),
+  fly:(t,d)=>{ fxNoise(t,d,"bandpass",300,1400,.35,.1,1.2); fxNoise(t+.3,d,"bandpass",1400,300,.5,.08,1.2); },
+  rise:(t,d)=>{ fxNoise(t,d,"lowpass",70,420,1.4,.35,2); fxTone(t,d,"sine",45,70,1.3,.12); },
+  settle:(t,d)=>{ fxNoise(t,d,"lowpass",420,70,1,.3,2); fxTone(t,d,"sine",70,42,.9,.1); },
+  click:(t,d)=>{ fxTone(t,d,"triangle",1500,1100,.04,.08); fxNoise(t,d,"bandpass",1800,1600,.03,.08,3); },
+  open:(t,d)=>{ fxTone(t,d,"triangle",900,1300,.06,.07); fxNoise(t,d,"bandpass",2200,1200,.12,.06,1); },
+  tick:(t,d)=>{ fxTone(t,d,"sine",3200,3200,.07,.06); fxTone(t,d,"sine",4800,4800,.05,.03); fxTone(t,d,"triangle",900,600,.05,.06); },
+  chime:(t,d)=>{ [[1047,.07,1.2],[1568,.04,.9],[2093,.02,.6]].forEach(([f,v,dd])=>fxTone(t,d,"sine",f,f,dd,v)); },
+  gust:(t,d)=>{ fxNoise(t,d,"bandpass",500,1300,1.5,.2,1.6); fxTone(t+.3,d,"sine",1700,2100,1,.012); },
+  breeze:(t,d)=>fxNoise(t,d,"lowpass",600,1100,1.2,.12,.7),
+  book:(t,d)=>{ fxTone(t,d,"sine",80,50,.3,.25); fxNoise(t,d,"lowpass",400,150,.25,.25,.7); FX.page(t+.25,d); FX.page(t+.45,d); },
+};
+function fxPlay(name){
+  const now=performance.now(); if(now-(sfx.last[name]||0)<90) return; sfx.last[name]=now;
+  const d=fxOut(); if(d) FX[name](snd.ctx.currentTime+.01,d);
+}
+// sounds that already belong to someone else (shields, ravens, near misses, timeline, journeys, ambience)
+const FX_SKIP=".shield,.sh3,.banner [data-house],.hsnd,.rsnd,.nsnd,[data-raven],[data-raven-tl],[data-near],[data-act=near-tl],#tlbar,#cine,#soundBtn,[data-act=cine],.tlm3,#gTL .tlm,.tlm";
+function fxFor(e){
+  const t=e.target; if(!(t instanceof Element) || t.closest(FX_SKIP)) return null;
+  let b;
+  if(t.closest(".tab")) return "page";
+  if(t.closest("#zin")) return "whooshUp";
+  if(t.closest("#zout")) return "whooshDown";
+  if(t.closest("#viewBtn")) return mapEl.classList.contains("is3d")?"settle":"rise";
+  if(t.closest("#layersBtn")) return "open";
+  if(t.closest("#measureBtn")) return "tick";
+  if(t.closest("#fxChip")) return null;
+  if((b=t.closest('[data-atmo="winter"]'))) return b.getAttribute("aria-pressed")==="true"?"breeze":"gust";
+  if(t.closest(".chip")) return "click";
+  if(t.closest("[data-preset]")) return "fly";
+  if(t.closest("#grab")) return "page";
+  if(t.closest("[data-route]")) return "quill";
+  if(t.closest("[data-region],.region")) return state.measure?null:"drum";
+  if(t.closest("[data-place],.loc,.loc3")) return state.measure?null:"tap";
+  if(t.closest('[data-act="center"]')) return "fly";
+  if(t.closest("[data-go],[data-tab],.crumb button")) return "page";
+  if(t.closest("[data-act]")) return "click";
+  if(t.closest("#panel button,.panel button")) return "click";
+  return null;
+}
+document.addEventListener("click",e=>{
+  if(!sfx.on || !e.isTrusted) return;
+  if(dragged && e.target instanceof Element && mapEl.contains(e.target)) return;
+  if(state.measure && e.target instanceof Element && mapEl.contains(e.target) && !e.target.closest(".ctl")){
+    const before=state.m.length; setTimeout(()=>{ const a=state.m.length; if(a!==before || a===1) fxPlay(a>=2?"chime":"tick"); },0); return; }
+  const n=fxFor(e); if(n) fxPlay(n);
+},true);
+q.addEventListener("keydown",e=>{ if(e.key==="Enter" && sfx.on && !res.hidden && res.querySelector("li[data-i]")) fxPlay("fly"); },true);
+res.addEventListener("mousedown",e=>{ if(sfx.on && e.target.closest("li[data-i]")) fxPlay("fly"); },true);
+spoilSel.addEventListener("change",()=>{ if(sfx.on) fxPlay("book"); });
+gotoSel.addEventListener("change",()=>{ if(sfx.on && gotoSel.value) fxPlay("fly"); },true);
+fxChip.addEventListener("click",()=>{ sfx.on=!sfx.on; fxChip.setAttribute("aria-pressed",sfx.on); try{ localStorage.setItem("poniente-fx-snd",sfx.on?"1":"0"); }catch(_){} if(sfx.on) fxPlay("click"); });
 
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
