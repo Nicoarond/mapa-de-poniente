@@ -590,6 +590,7 @@ button{font:inherit;color:inherit}
           <button id="cinePlay" class="cine-play" aria-label="Pausar">❚❚</button>
           <button id="cineNext" aria-label="Etapa siguiente">⏭</button>
           <div class="cine-prog"><i id="cineFill"></i></div>
+          <button id="cineSnd" aria-label="Silenciar el viaje" aria-pressed="true" title="Sonido del viaje">🔊</button>
           <button id="cineExit" aria-label="Salir del viaje">✕</button>
         </div>
       </div>
@@ -3417,6 +3418,60 @@ new MutationObserver(()=>{
     if(x3.lastNear>=0 && panel.querySelector('[data-act="near-tl"]')) pair3D(NEAR[x3.lastNear]); };
   setTimeout(wait,150);
 }).observe(btn3d,{attributes:true,attributeFilter:["aria-pressed"]});
+
+/* ---------- Sound for cinematic journeys: ambience, hooves on land, creaking ship at sea, a bell at each stage ---------- */
+const csnd={on:true,started:false,timer:0,nextHoof:0,nextCreak:0,cap:-1,out:null,noise:null};
+try{ csnd.on=localStorage.getItem("poniente-cine-snd")!=="0"; }catch(_){}
+const cineSndBtn=document.getElementById("cineSnd");
+function syncCineBtn(){ cineSndBtn.textContent=csnd.on?"🔊":"🔇"; cineSndBtn.setAttribute("aria-pressed",csnd.on); cineSndBtn.setAttribute("aria-label",csnd.on?"Silenciar el viaje":"Activar el sonido del viaje"); }
+syncCineBtn();
+function cineAudio(){
+  if(!snd.ctx && !buildSound()) return null;
+  if(!csnd.out){ csnd.out=snd.ctx.createGain(); csnd.out.gain.value=.6; csnd.out.connect(snd.ctx.destination);
+    const ctx=snd.ctx, b=ctx.createBuffer(1,ctx.sampleRate*.25,ctx.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; csnd.noise=b; }
+  return snd.ctx;
+}
+function hoof(t,vol){
+  const ctx=snd.ctx, n=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), g=ctx.createGain();
+  n.buffer=csnd.noise; bp.type="bandpass"; bp.frequency.value=260+Math.random()*120; bp.Q.value=1.8;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.005); g.gain.exponentialRampToValueAtTime(.0008,t+.09);
+  n.connect(bp); bp.connect(g); g.connect(csnd.out); n.start(t); n.stop(t+.12);
+}
+function gallop(t){ hoof(t,.55); hoof(t+.085,.4); hoof(t+.17,.5); }
+function creak(t){
+  const ctx=snd.ctx, o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), g=ctx.createGain(), f0=70+Math.random()*30;
+  o.type="sawtooth"; o.frequency.setValueAtTime(f0,t); o.frequency.linearRampToValueAtTime(f0*1.35,t+.5); o.frequency.linearRampToValueAtTime(f0*1.1,t+.9);
+  lp.type="lowpass"; lp.frequency.value=420; lp.Q.value=6;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.07,t+.15); g.gain.linearRampToValueAtTime(.05,t+.6); g.gain.linearRampToValueAtTime(0,t+.95);
+  o.connect(lp); lp.connect(g); g.connect(csnd.out); o.start(t); o.stop(t+1);
+}
+function bell(t){
+  const ctx=snd.ctx;
+  [[392,.12,2.2],[588,.06,1.6],[784,.035,1.1]].forEach(([f,v,d])=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type="sine"; o.frequency.value=f;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+.01); g.gain.exponentialRampToValueAtTime(.0005,t+d); o.connect(g); g.connect(csnd.out); o.start(t); o.stop(t+d+.05); });
+}
+function cineSoundTick(){
+  if(!cine.on || !csnd.on || !snd.ctx) return;
+  const t=snd.ctx.currentTime, st=cineState(cine.clock);
+  if(cine.cap!==csnd.cap && cine.cap>=0){ csnd.cap=cine.cap; bell(t+.05); }
+  if(!cine.playing || !st.moving) return;
+  const P=cinePoint(cine.r,st.d);
+  if(onLand(P.x,P.y)){ if(t>=csnd.nextHoof){ gallop(Math.max(t,csnd.nextHoof)); csnd.nextHoof=Math.max(t,csnd.nextHoof)+.52; } }
+  else if(t>=csnd.nextCreak){ creak(t); csnd.nextCreak=t+1.6+Math.random()*1.4; }
+}
+function cineSoundStart(){
+  if(!csnd.on || !cineAudio()) return;
+  snd.ctx.resume(); csnd.cap=-1; csnd.nextHoof=0; csnd.nextCreak=0;
+  if(!snd.on){ csnd.started=true; setSound(true); }
+  clearInterval(csnd.timer); csnd.timer=setInterval(cineSoundTick,80);
+}
+function cineSoundStop(){ clearInterval(csnd.timer); if(csnd.started){ csnd.started=false; setSound(false); } }
+{ const _c=startCine; startCine=function(id){ cineSoundStart(); return _c(id); }; }
+{ const _s=stopCine; stopCine=function(silent){ const was=cine.on; const r=_s(silent); if(was && !silent) cineSoundStop(); return r; }; }
+cineSndBtn.onclick=()=>{
+  csnd.on=!csnd.on; try{ localStorage.setItem("poniente-cine-snd",csnd.on?"1":"0"); }catch(_){}
+  syncCineBtn(); if(csnd.on) cineSoundStart(); else cineSoundStop();
+};
 
 renderIntro();
 { let pref=null; try{pref=localStorage.getItem("poniente-mode");}catch(_){}
