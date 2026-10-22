@@ -315,6 +315,8 @@ button{font:inherit;color:inherit}
 .tlbar[hidden]{display:none}
 .tlplay{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--sel);background:var(--sel);color:var(--on-sel);cursor:pointer;font-size:13px;display:grid;place-items:center}
 .tlplay:hover{background:var(--accent);border-color:var(--accent)}
+.tlsnd{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--ink-2);background:transparent;color:var(--ink);cursor:pointer;font-size:14px;display:grid;place-items:center;padding:0}
+.tlsnd:hover{border-color:var(--accent)}
 .tltrack{flex:1;min-width:0;position:relative}
 .tlnow{font-family:var(--f-display);font-size:15px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tltrack input{width:100%;margin:4px 0 0;accent-color:var(--accent)}
@@ -601,6 +603,7 @@ button{font:inherit;color:inherit}
           <input id="tlRange" type="range" min="0" max="5.8" step="0.005" value="1" aria-label="Momento de la historia">
           <div class="tlticks" id="tlTicks"></div>
         </div>
+        <button id="tlSnd" class="tlsnd" aria-label="Silenciar la línea de tiempo" aria-pressed="true" title="Sonido de la línea de tiempo">🔊</button>
       </div>
       <div class="map3d" id="map3d" hidden><div class="labels3d" id="labels3d"></div></div>
       <div class="ctl loading3d" id="loading3d" hidden>Levantando las montañas…</div>
@@ -3471,6 +3474,61 @@ function cineSoundStop(){ clearInterval(csnd.timer); if(csnd.started){ csnd.star
 cineSndBtn.onclick=()=>{
   csnd.on=!csnd.on; try{ localStorage.setItem("poniente-cine-snd",csnd.on?"1":"0"); }catch(_){}
   syncCineBtn(); if(csnd.on) cineSoundStart(); else cineSoundStop();
+};
+
+/* ---------- Sound for the timeline: ambience, a horn for each book, bells for near-misses, ravens' wings and a toll for each death ---------- */
+const tsnd={on:true,started:false,lastT:null,lastToll:0};
+try{ tsnd.on=localStorage.getItem("poniente-tl-snd")!=="0"; }catch(_){}
+const tlSndBtn=document.getElementById("tlSnd");
+function syncTlBtn(){ tlSndBtn.textContent=tsnd.on?"🔊":"🔇"; tlSndBtn.setAttribute("aria-pressed",tsnd.on); tlSndBtn.setAttribute("aria-label",tsnd.on?"Silenciar la línea de tiempo":"Activar el sonido de la línea de tiempo"); }
+syncTlBtn();
+function horn(t){
+  const ctx=snd.ctx, lp=ctx.createBiquadFilter(), g=ctx.createGain(); lp.type="lowpass"; lp.frequency.setValueAtTime(300,t); lp.frequency.linearRampToValueAtTime(900,t+.7); lp.frequency.linearRampToValueAtTime(400,t+2.4);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.09,t+.5); g.gain.setValueAtTime(.09,t+1.6); g.gain.linearRampToValueAtTime(0,t+2.6);
+  [110,110.6,165].forEach(f=>{ const o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.setValueAtTime(f*.97,t); o.frequency.linearRampToValueAtTime(f,t+.3); o.connect(lp); o.start(t); o.stop(t+2.7); });
+  lp.connect(g); g.connect(csnd.out);
+}
+function toll(t){
+  const ctx=snd.ctx;
+  [[98,.16,4.5],[196,.06,3],[262,.04,2.2],[294,.025,1.6]].forEach(([f,v,d])=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type="sine"; o.frequency.value=f;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+.02); g.gain.exponentialRampToValueAtTime(.0005,t+d); o.connect(g); g.connect(csnd.out); o.start(t); o.stop(t+d+.05); });
+}
+function wings(t){
+  const ctx=snd.ctx;
+  for(let i=0;i<5;i++){ const t0=t+i*.17, n=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), g=ctx.createGain();
+    n.buffer=csnd.noise; bp.type="bandpass"; bp.frequency.value=700+Math.random()*300; bp.Q.value=.9;
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.18*(1-i*.12),t0+.04); g.gain.exponentialRampToValueAtTime(.001,t0+.14);
+    n.connect(bp); bp.connect(g); g.connect(csnd.out); n.start(t0); n.stop(t0+.16); }
+  const c=t+.95;
+  for(let k=0;k<2;k++){ const t0=c+k*.32, o=ctx.createOscillator(), bp=ctx.createBiquadFilter(), g=ctx.createGain();
+    o.type="sawtooth"; o.frequency.setValueAtTime(560,t0); o.frequency.exponentialRampToValueAtTime(380,t0+.22);
+    bp.type="bandpass"; bp.frequency.value=1250; bp.Q.value=3;
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.09,t0+.03); g.gain.exponentialRampToValueAtTime(.001,t0+.24);
+    o.connect(bp); bp.connect(g); g.connect(csnd.out); o.start(t0); o.stop(t0+.26); }
+}
+function tlSoundStart(){
+  if(!tsnd.on || !cineAudio()) return;
+  snd.ctx.resume();
+  if(!snd.on){ tsnd.started=true; setSound(true); }
+}
+function tlSoundStop(){ tsnd.lastT=null; if(tsnd.started){ tsnd.started=false; setSound(false); } }
+// sounds for whatever happened between the previous moment and this one (only small forward steps, so a big jump stays quiet)
+function tlSoundEvents(a,b){
+  if(!tsnd.on || !snd.ctx || !csnd.out || b<=a || b-a>.08) return;
+  const t=snd.ctx.currentTime+.03, now=performance.now();
+  for(let k=1;k<=5;k++) if(a<k && b>=k){ horn(t); break; }
+  for(const e of nearVisible()) if(a<e.time-.07 && b>=e.time-.07) bell(t+.1);
+  for(const r of RAVENS){ if(r.book>state.spoil) continue; const t0=r.time-.05; if(a<t0 && b>=t0) wings(t); }
+  for(const r of ROUTES){ if(!r.dead || !r.stops || !r.stops.length) continue; const d=r.stops[r.stops.length-1].time+.02;
+    if(a<d && b>=d && now-tsnd.lastToll>900){ tsnd.lastToll=now; toll(t+.2); } }
+}
+{ const _r=renderTL; renderTL=function(){ const r=_r(); if(state.tl){ if(tsnd.lastT!=null) tlSoundEvents(tsnd.lastT,state.t); tsnd.lastT=state.t; } return r; }; }
+{ const _p=play; play=function(){ if(!playing) tlSoundStart(); return _p(); }; tlPlay.onclick=play; }
+tlRange.addEventListener("pointerdown",tlSoundStart);
+{ const _st=setTL; setTL=function(on){ const was=state.tl; const r=_st(on); if(was && !on) tlSoundStop(); return r; }; }
+tlSndBtn.onclick=()=>{
+  tsnd.on=!tsnd.on; try{ localStorage.setItem("poniente-tl-snd",tsnd.on?"1":"0"); }catch(_){}
+  syncTlBtn(); if(tsnd.on) tlSoundStart(); else tlSoundStop();
 };
 
 renderIntro();
